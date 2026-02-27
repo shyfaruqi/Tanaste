@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Tanaste.Storage</RootNamespace>
+    <AssemblyName>Tanaste.Storage</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ORM-less SQLite access via Microsoft.Data.Sqlite -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Storage implements repository contracts defined in Domain and maps rows to
+      Domain aggregates (MediaAsset, AssetStatus).  Domain has no back-reference.
+    -->
+    <ProjectReference Include="..\Tanaste.Domain\Tanaste.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Embed DDL so DatabaseConnection can initialise a fresh database without
+         requiring the .sql file to be present at runtime. -->
+    <EmbeddedResource Include="Schema\schema.sql" />
+  </ItemGroup>
+
+</Project>

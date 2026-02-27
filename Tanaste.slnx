@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Tanaste.Api/Tanaste.Api.csproj" />
+    <Project Path="src/Tanaste.Domain/Tanaste.Domain.csproj" />
+    <Project Path="src/Tanaste.Ingestion/Tanaste.Ingestion.csproj" />
+    <Project Path="src/Tanaste.Intelligence/Tanaste.Intelligence.csproj" />
+    <Project Path="src/Tanaste.Processors/Tanaste.Processors.csproj" />
+    <Project Path="src/Tanaste.Storage/Tanaste.Storage.csproj" />
+  </Folder>
+</Solution>

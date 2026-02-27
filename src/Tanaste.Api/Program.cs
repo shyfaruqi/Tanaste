@@ -1,0 +1,140 @@
+using Tanaste.Api.Endpoints;
+using Tanaste.Api.Hubs;
+using Tanaste.Api.Middleware;
+using Tanaste.Api.Services;
+using Tanaste.Domain.Contracts;
+using Tanaste.Ingestion;
+using Tanaste.Ingestion.Contracts;
+using Tanaste.Ingestion.Models;
+using Tanaste.Intelligence;
+using Tanaste.Intelligence.Contracts;
+using Tanaste.Intelligence.Strategies;
+using Tanaste.Processors;
+using Tanaste.Processors.Contracts;
+using Tanaste.Processors.Processors;
+using Tanaste.Storage;
+using Tanaste.Storage.Contracts;
+
+var builder = WebApplication.CreateBuilder(args);
+var config  = builder.Configuration;
+
+// ── CORS ──────────────────────────────────────────────────────────────────────
+var allowedOrigins = config
+    .GetSection("Tanaste:Cors:AllowedOrigins")
+    .Get<string[]>() ?? [];
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("BlazorWasm", policy =>
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials()); // Required for SignalR WebSocket/SSE transports
+});
+
+// ── SignalR ───────────────────────────────────────────────────────────────────
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IEventPublisher, SignalREventPublisher>();
+
+// ── Data Protection / Secret Store ────────────────────────────────────────────
+builder.Services.AddDataProtection();
+builder.Services.AddSingleton<ISecretStore, DataProtectionSecretStore>();
+
+// ── OpenAPI / Swagger ─────────────────────────────────────────────────────────
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "Tanaste API", Version = "v1" });
+});
+
+// ── Storage / Database ────────────────────────────────────────────────────────
+string dbPath = config["Tanaste:DatabasePath"] ?? "tanaste.db";
+builder.Services.AddSingleton<IDatabaseConnection>(sp =>
+{
+    var db = new DatabaseConnection(dbPath);
+    db.Open();
+    db.InitializeSchema();
+    db.RunStartupChecks();
+    return db;
+});
+
+string manifestPath = config["Tanaste:ManifestPath"] ?? "tanaste_master.json";
+builder.Services.AddSingleton<IStorageManifest>(_ => new ManifestParser(manifestPath));
+builder.Services.AddSingleton<ITransactionJournal, TransactionJournal>();
+builder.Services.AddSingleton<IMediaAssetRepository, MediaAssetRepository>();
+builder.Services.AddSingleton<IHubRepository, HubRepository>();
+builder.Services.AddSingleton<IProviderConfigurationRepository, ProviderConfigurationRepository>();
+builder.Services.AddSingleton<IApiKeyRepository, ApiKeyRepository>();
+builder.Services.AddSingleton<ApiKeyService>();
+
+// ── Processors ────────────────────────────────────────────────────────────────
+builder.Services.AddSingleton<IVideoMetadataExtractor, StubVideoMetadataExtractor>();
+
+builder.Services.AddSingleton<IProcessorRegistry>(sp =>
+{
+    var registry = new MediaProcessorRegistry();
+    registry.Register(new EpubProcessor());
+    registry.Register(new VideoProcessor(sp.GetRequiredService<IVideoMetadataExtractor>()));
+    registry.Register(new ComicProcessor());
+    registry.Register(new GenericFileProcessor());
+    return registry;
+});
+
+builder.Services.AddSingleton<IByteStreamer, ByteStreamer>();
+
+// ── Intelligence ──────────────────────────────────────────────────────────────
+builder.Services.AddSingleton<IScoringStrategy, ExactMatchStrategy>();
+builder.Services.AddSingleton<IScoringStrategy, LevenshteinStrategy>();
+
+builder.Services.AddSingleton<IConflictResolver>(sp =>
+    new ConflictResolver(sp.GetServices<IScoringStrategy>()));
+
+builder.Services.AddSingleton<IScoringEngine>(sp =>
+    new ScoringEngine(sp.GetRequiredService<IConflictResolver>()));
+
+builder.Services.AddSingleton<IIdentityMatcher>(sp =>
+    new IdentityMatcher(sp.GetServices<IScoringStrategy>()));
+
+builder.Services.AddSingleton<IHubArbiter>(sp =>
+    new HubArbiter(
+        sp.GetRequiredService<IIdentityMatcher>(),
+        sp.GetRequiredService<ITransactionJournal>()));
+
+// ── Ingestion (for POST /ingestion/scan) ─────────────────────────────────────
+builder.Services.Configure<IngestionOptions>(config.GetSection(IngestionOptions.SectionName));
+builder.Services.AddSingleton<IAssetHasher, AssetHasher>();
+builder.Services.AddSingleton<IFileWatcher, FileWatcher>();
+builder.Services.AddSingleton<DebounceQueue>();
+builder.Services.AddSingleton<IFileOrganizer, FileOrganizer>();
+builder.Services.AddSingleton<IMetadataTagger, EpubMetadataTagger>();
+builder.Services.AddSingleton<IBackgroundWorker, BackgroundWorker>();
+
+// IngestionEngine registered as both a plain singleton and IIngestionEngine.
+// AddHostedService is intentionally NOT called — the background watcher loop
+// never starts in the API process. Only DryRunAsync is needed here.
+builder.Services.AddSingleton<IngestionEngine>();
+builder.Services.AddSingleton<IIngestionEngine>(sp => sp.GetRequiredService<IngestionEngine>());
+
+// ── Build ─────────────────────────────────────────────────────────────────────
+var app = builder.Build();
+
+// ── Middleware pipeline ───────────────────────────────────────────────────────
+app.UseCors("BlazorWasm");
+app.UseMiddleware<ApiKeyMiddleware>();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Tanaste API v1"));
+}
+
+// ── Endpoint registration ─────────────────────────────────────────────────────
+app.MapHub<CommunicationHub>("/hubs/intercom");
+app.MapSystemEndpoints();
+app.MapAdminEndpoints();
+app.MapHubEndpoints();
+app.MapStreamEndpoints();
+app.MapIngestionEndpoints();
+app.MapMetadataEndpoints();
+
+app.Run();

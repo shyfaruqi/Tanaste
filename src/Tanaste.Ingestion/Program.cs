@@ -1,0 +1,115 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Tanaste.Domain.Contracts;
+using Tanaste.Ingestion;
+using Tanaste.Ingestion.Contracts;
+using Tanaste.Ingestion.Models;
+using Tanaste.Intelligence;
+using Tanaste.Intelligence.Contracts;
+using Tanaste.Intelligence.Models;
+using Tanaste.Intelligence.Strategies;
+using Tanaste.Processors;
+using Tanaste.Processors.Contracts;
+using Tanaste.Processors.Processors;
+using Tanaste.Storage;
+using Tanaste.Storage.Contracts;
+
+// ─────────────────────────────────────────────────────────────────
+// Host builder
+// ─────────────────────────────────────────────────────────────────
+
+var host = Host.CreateDefaultBuilder(args)
+    .ConfigureLogging(logging =>
+    {
+        logging.ClearProviders();
+        logging.AddConsole();
+        logging.SetMinimumLevel(LogLevel.Information);
+    })
+    .ConfigureServices((ctx, services) =>
+    {
+        var config = ctx.Configuration;
+
+        // ── Ingestion options ──────────────────────────────────
+        services.Configure<IngestionOptions>(
+            config.GetSection(IngestionOptions.SectionName));
+
+        // ── Storage / Database ─────────────────────────────────
+        // DatabaseConnection needs a path to the SQLite file.
+        // Conventionally loaded from the manifest; for the Worker host
+        // we read it from configuration (Ingestion:DatabasePath).
+        string dbPath = config["Ingestion:DatabasePath"] ?? "tanaste.db";
+        services.AddSingleton<IDatabaseConnection>(sp =>
+        {
+            var db = new DatabaseConnection(dbPath);
+            db.Open();
+            db.InitializeSchema();
+            db.RunStartupChecks();
+            return db;
+        });
+
+        services.AddSingleton<ITransactionJournal, TransactionJournal>();
+        services.AddSingleton<IMediaAssetRepository, MediaAssetRepository>();
+
+        // ── File watching / debounce ───────────────────────────
+        services.AddSingleton<IFileWatcher, FileWatcher>();
+        services.AddSingleton<DebounceQueue>();
+
+        // ── Asset hasher ───────────────────────────────────────
+        services.AddSingleton<IAssetHasher, AssetHasher>();
+
+        // ── Media processors ───────────────────────────────────
+        services.AddSingleton<IVideoMetadataExtractor, StubVideoMetadataExtractor>();
+
+        services.AddSingleton<IProcessorRegistry>(sp =>
+        {
+            var registry = new MediaProcessorRegistry();
+
+            // Processors ordered by priority (registry sorts internally).
+            registry.Register(new EpubProcessor());
+            registry.Register(new VideoProcessor(
+                sp.GetRequiredService<IVideoMetadataExtractor>()));
+            registry.Register(new ComicProcessor());
+            registry.Register(new GenericFileProcessor());
+
+            return registry;
+        });
+
+        // ── Intelligence / Scoring ─────────────────────────────
+        services.AddSingleton<IScoringStrategy, ExactMatchStrategy>();
+        services.AddSingleton<IScoringStrategy, LevenshteinStrategy>();
+
+        services.AddSingleton<IConflictResolver>(sp =>
+            new ConflictResolver(sp.GetServices<IScoringStrategy>()));
+
+        services.AddSingleton<IScoringEngine>(sp =>
+            new ScoringEngine(sp.GetRequiredService<IConflictResolver>()));
+
+        services.AddSingleton<IIdentityMatcher>(sp =>
+            new IdentityMatcher(sp.GetServices<IScoringStrategy>()));
+
+        services.AddSingleton<IHubArbiter>(sp =>
+            new HubArbiter(
+                sp.GetRequiredService<IIdentityMatcher>(),
+                sp.GetRequiredService<ITransactionJournal>()));
+
+        // ── Event publishing (no-op in the worker host) ───────
+        services.AddSingleton<IEventPublisher, NullEventPublisher>();
+
+        // ── File organizer ─────────────────────────────────────
+        services.AddSingleton<IFileOrganizer, FileOrganizer>();
+
+        // ── Metadata taggers ───────────────────────────────────
+        services.AddSingleton<IMetadataTagger, EpubMetadataTagger>();
+
+        // ── Background worker ──────────────────────────────────
+        services.AddSingleton<IBackgroundWorker, BackgroundWorker>();
+
+        // ── Ingestion engine (BackgroundService + IIngestionEngine) ──
+        services.AddSingleton<IngestionEngine>();
+        services.AddSingleton<IIngestionEngine>(sp => sp.GetRequiredService<IngestionEngine>());
+        services.AddHostedService(sp => sp.GetRequiredService<IngestionEngine>());
+    })
+    .Build();
+
+await host.RunAsync();

@@ -1,0 +1,244 @@
+using System.Text.Json.Serialization;
+using Tanaste.Domain.Aggregates;
+using Tanaste.Domain.Entities;
+using Tanaste.Ingestion.Contracts;
+
+namespace Tanaste.Api.Models;
+
+// ── GET /system/status ─────────────────────────────────────────────────────────
+
+public sealed class SystemStatusResponse
+{
+    [JsonPropertyName("status")]
+    public string Status { get; init; } = string.Empty;
+
+    [JsonPropertyName("version")]
+    public string Version { get; init; } = string.Empty;
+}
+
+// ── /admin/api-keys ────────────────────────────────────────────────────────────
+
+public sealed class ApiKeyDto
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; init; }
+
+    [JsonPropertyName("label")]
+    public string Label { get; init; } = string.Empty;
+
+    [JsonPropertyName("created_at")]
+    public DateTimeOffset CreatedAt { get; init; }
+
+    public static ApiKeyDto FromDomain(ApiKey key) => new()
+    {
+        Id        = key.Id,
+        Label     = key.Label,
+        CreatedAt = key.CreatedAt,
+    };
+}
+
+public sealed class CreateApiKeyRequest
+{
+    [JsonPropertyName("label")]
+    public string Label { get; init; } = string.Empty;
+}
+
+public sealed class CreateApiKeyResponse
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; init; }
+
+    [JsonPropertyName("label")]
+    public string Label { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The API key plaintext. Shown exactly once — store it now; it cannot be retrieved again.
+    /// </summary>
+    [JsonPropertyName("key")]
+    public string Key { get; init; } = string.Empty;
+
+    [JsonPropertyName("created_at")]
+    public DateTimeOffset CreatedAt { get; init; }
+}
+
+// ── /admin/provider-configs ────────────────────────────────────────────────────
+
+public sealed class ProviderConfigDto
+{
+    [JsonPropertyName("provider_id")]
+    public string ProviderId { get; init; } = string.Empty;
+
+    [JsonPropertyName("key")]
+    public string Key { get; init; } = string.Empty;
+
+    /// <summary>Secret values are returned as '********'; non-secret values are returned as-is.</summary>
+    [JsonPropertyName("value")]
+    public string Value { get; init; } = string.Empty;
+
+    [JsonPropertyName("is_secret")]
+    public bool IsSecret { get; init; }
+
+    public static ProviderConfigDto FromDomain(ProviderConfiguration cfg) => new()
+    {
+        ProviderId = cfg.ProviderId,
+        Key        = cfg.Key,
+        Value      = cfg.Value,
+        IsSecret   = cfg.IsSecret,
+    };
+}
+
+public sealed class UpsertProviderConfigRequest
+{
+    [JsonPropertyName("value")]
+    public string Value { get; init; } = string.Empty;
+
+    [JsonPropertyName("is_secret")]
+    public bool IsSecret { get; init; }
+}
+
+// ── GET /hubs ──────────────────────────────────────────────────────────────────
+
+public sealed class HubDto
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; init; }
+
+    [JsonPropertyName("universe_id")]
+    public Guid? UniverseId { get; init; }
+
+    [JsonPropertyName("created_at")]
+    public DateTimeOffset CreatedAt { get; init; }
+
+    [JsonPropertyName("works")]
+    public List<WorkDto> Works { get; init; } = [];
+
+    public static HubDto FromDomain(Hub hub) => new()
+    {
+        Id         = hub.Id,
+        UniverseId = hub.UniverseId,
+        CreatedAt  = hub.CreatedAt,
+        Works      = hub.Works.Select(WorkDto.FromDomain).ToList(),
+    };
+}
+
+public sealed class WorkDto
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; init; }
+
+    [JsonPropertyName("hub_id")]
+    public Guid HubId { get; init; }
+
+    [JsonPropertyName("media_type")]
+    public string MediaType { get; init; } = string.Empty;
+
+    [JsonPropertyName("sequence_index")]
+    public int? SequenceIndex { get; init; }
+
+    [JsonPropertyName("canonical_values")]
+    public List<CanonicalValueDto> CanonicalValues { get; init; } = [];
+
+    public static WorkDto FromDomain(Work work) => new()
+    {
+        Id              = work.Id,
+        HubId           = work.HubId,
+        MediaType       = work.MediaType.ToString(),
+        SequenceIndex   = work.SequenceIndex,
+        CanonicalValues = work.CanonicalValues.Select(CanonicalValueDto.FromDomain).ToList(),
+    };
+}
+
+public sealed class CanonicalValueDto
+{
+    [JsonPropertyName("key")]
+    public string Key { get; init; } = string.Empty;
+
+    [JsonPropertyName("value")]
+    public string Value { get; init; } = string.Empty;
+
+    [JsonPropertyName("last_scored_at")]
+    public DateTimeOffset LastScoredAt { get; init; }
+
+    public static CanonicalValueDto FromDomain(CanonicalValue cv) => new()
+    {
+        Key          = cv.Key,
+        Value        = cv.Value,
+        LastScoredAt = cv.LastScoredAt,
+    };
+}
+
+// ── POST /ingestion/scan ───────────────────────────────────────────────────────
+
+public sealed class ScanRequest
+{
+    /// <summary>
+    /// Optional root path to scan. When absent, the engine uses the configured
+    /// WatchDirectory from IngestionOptions.
+    /// </summary>
+    [JsonPropertyName("root_path")]
+    public string? RootPath { get; init; }
+}
+
+public sealed class ScanResponse
+{
+    [JsonPropertyName("operations")]
+    public List<PendingOperationDto> Operations { get; init; } = [];
+
+    [JsonPropertyName("total_count")]
+    public int TotalCount => Operations.Count;
+}
+
+public sealed class PendingOperationDto
+{
+    [JsonPropertyName("source_path")]
+    public string SourcePath { get; init; } = string.Empty;
+
+    [JsonPropertyName("destination_path")]
+    public string DestinationPath { get; init; } = string.Empty;
+
+    [JsonPropertyName("operation_kind")]
+    public string OperationKind { get; init; } = string.Empty;
+
+    [JsonPropertyName("reason")]
+    public string? Reason { get; init; }
+
+    public static PendingOperationDto FromDomain(PendingOperation op) => new()
+    {
+        SourcePath      = op.SourcePath,
+        DestinationPath = op.DestinationPath,
+        OperationKind   = op.OperationKind,
+        Reason          = op.Reason,
+    };
+}
+
+// ── PATCH /metadata/resolve ────────────────────────────────────────────────────
+
+public sealed class ResolveRequest
+{
+    /// <summary>The Work or Edition entity whose canonical value is being overridden.</summary>
+    [JsonPropertyName("entity_id")]
+    public Guid EntityId { get; init; }
+
+    /// <summary>The metadata field key, e.g. "title", "release_year".</summary>
+    [JsonPropertyName("claim_key")]
+    public string ClaimKey { get; init; } = string.Empty;
+
+    /// <summary>The human-chosen winning value to persist.</summary>
+    [JsonPropertyName("chosen_value")]
+    public string ChosenValue { get; init; } = string.Empty;
+}
+
+public sealed class ResolveResponse
+{
+    [JsonPropertyName("entity_id")]
+    public Guid EntityId { get; init; }
+
+    [JsonPropertyName("claim_key")]
+    public string ClaimKey { get; init; } = string.Empty;
+
+    [JsonPropertyName("chosen_value")]
+    public string ChosenValue { get; init; } = string.Empty;
+
+    [JsonPropertyName("resolved_at")]
+    public DateTimeOffset ResolvedAt { get; init; }
+}
