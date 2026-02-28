@@ -34,6 +34,9 @@ builder.Services.AddScoped<ITanasteApiClient, TanasteApiClient>();
 builder.Services.AddScoped<UniverseStateContainer>();
 builder.Services.AddScoped<UIOrchestratorService>();
 
+// ── Automotive Mode (scoped = per-tab; a TV in Automotive Mode won't affect the desktop) ──
+builder.Services.AddScoped<AutomotiveModeService>();
+
 // ── Build ─────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 

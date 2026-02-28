@@ -19,10 +19,11 @@ public static class UniverseMapper
 {
     // ── Colour palette ────────────────────────────────────────────────────────
     // Chosen to complement the ThemeService palette:
-    //   Book  = amber   #FF8F00  — warm, literary feel
-    //   Video = teal    #00BFA5  — matches secondary colour
-    //   Comic = violet  #7C4DFF  — matches primary colour
-    //   Unknown = slate #9E9E9E  — neutral fallback
+    //   Book    = amber  #FF8F00  — warm, literary feel
+    //   Video   = teal   #00BFA5  — matches secondary colour
+    //   Comic   = violet #7C4DFF  — matches primary colour
+    //   Audio   = rose   #EC407A  — distinct, vibrant
+    //   Unknown = slate  #9E9E9E  — neutral fallback
     // ─────────────────────────────────────────────────────────────────────────
 
     private static readonly IReadOnlyDictionary<MediaTypeBucket, string> BucketColours =
@@ -31,6 +32,7 @@ public static class UniverseMapper
             [MediaTypeBucket.Book]    = "#FF8F00",
             [MediaTypeBucket.Video]   = "#00BFA5",
             [MediaTypeBucket.Comic]   = "#7C4DFF",
+            [MediaTypeBucket.Audio]   = "#EC407A",
             [MediaTypeBucket.Unknown] = "#9E9E9E",
         };
 
@@ -79,6 +81,13 @@ public static class UniverseMapper
     public static string ColourFor(MediaTypeBucket bucket) => BucketColours[bucket];
 
     /// <summary>
+    /// Public entry-point for bucket classification — used by components that need
+    /// to map a raw media-type string to an icon or colour (e.g. CommandPalette).
+    /// </summary>
+    public static MediaTypeBucket ClassifyBucketPublic(string mediaType) =>
+        ClassifyBucket(mediaType);
+
+    /// <summary>
     /// Returns the brand hex colour that best represents the dominant media type
     /// across a Hub's work list.  Used by <see cref="HubViewModel.DominantHexColor"/>
     /// to colour the Hub's bento tile without a full universe map pass.
@@ -113,8 +122,19 @@ public static class UniverseMapper
         if (t.Contains("video") || t.Contains("movie") || t.Contains("mkv")
                                 || t.Contains("mp4")   || t.Contains("avi")) return MediaTypeBucket.Video;
         if (t.Contains("comic") || t.Contains("cbz")   || t.Contains("cbr")) return MediaTypeBucket.Comic;
+        if (t.Contains("audio") || t.Contains("mp3")   || t.Contains("flac")
+                                || t.Contains("aac")   || t.Contains("m4a")
+                                || t.Contains("ogg")   || t.Contains("wav")) return MediaTypeBucket.Audio;
         return MediaTypeBucket.Unknown;
     }
+
+    /// <summary>
+    /// Returns <see langword="true"/> when the raw media-type string maps to the
+    /// <see cref="MediaTypeBucket.Audio"/> bucket.  Used by Automotive Mode to
+    /// filter the grid to audio-only content.
+    /// </summary>
+    public static bool IsAudio(string mediaType) =>
+        ClassifyBucket(mediaType) == MediaTypeBucket.Audio;
 
     /// <summary>
     /// Derives a display title for the universe from its hub composition.

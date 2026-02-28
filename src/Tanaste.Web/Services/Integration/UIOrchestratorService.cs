@@ -110,6 +110,31 @@ public sealed class UIOrchestratorService : IAsyncDisposable
         return ok;
     }
 
+    // ── Search ────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Searches works across all hubs.  Returns an empty list on failure or when
+    /// the query is shorter than 2 characters (enforced server-side too).
+    /// </summary>
+    public Task<List<SearchResultViewModel>> SearchWorksAsync(
+        string query,
+        CancellationToken ct = default)
+        => _api.SearchWorksAsync(query, ct);
+
+    // ── API Key Management ────────────────────────────────────────────────────
+
+    /// <summary>Lists all issued Guest API Keys (id, label, created_at only).</summary>
+    public Task<List<ApiKeyViewModel>> GetApiKeysAsync(CancellationToken ct = default)
+        => _api.GetApiKeysAsync(ct);
+
+    /// <summary>Generates a new Guest API Key. The returned plaintext is shown exactly once.</summary>
+    public Task<NewApiKeyViewModel?> CreateApiKeyAsync(string label, CancellationToken ct = default)
+        => _api.CreateApiKeyAsync(label, ct);
+
+    /// <summary>Revokes a Guest API Key. Any session using the key receives 401 immediately.</summary>
+    public Task<bool> RevokeApiKeyAsync(Guid id, CancellationToken ct = default)
+        => _api.RevokeApiKeyAsync(id, ct);
+
     // ── SignalR Intercom ───────────────────────────────────────────────────────
 
     /// <summary>

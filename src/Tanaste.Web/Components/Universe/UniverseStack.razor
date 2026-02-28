@@ -1,28 +1,42 @@
 @namespace Tanaste.Web.Components.Universe
+@inject AutomotiveModeService AutomotiveMode
+@implements IDisposable
 
 @* Asymmetric Bento grid of Hub cards (Section 2.2 of the UI ASD).
    The first (newest) Hub is the hero tile at 2×2; all others are 1×1.
-   Each BentoItem glows with its Hub's brand colour.                    *@
+   Each BentoItem glows with its Hub's brand colour.
+   In Automotive Mode only Audio hubs are shown; each tile gets oversized touch targets. *@
 
-@if (Hubs is { Count: > 0 })
+@if (VisibleHubs is { Count: > 0 })
 {
-    <MudText Typo="Typo.h5" Class="mb-4">All Hubs</MudText>
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
+        <MudText Typo="Typo.h5">@(AutomotiveMode.IsActive ? "Audio Library" : "All Hubs")</MudText>
+        @if (AutomotiveMode.IsActive)
+        {
+            <MudChip T="string" Color="Color.Error" Size="Size.Small"
+                     Icon="@Icons.Material.Filled.DirectionsCar">
+                Automotive
+            </MudChip>
+        }
+    </MudStack>
 
     <BentoGrid Class="@Class">
-        @foreach (var (hub, index) in Hubs.Select((h, i) => (h, i)))
+        @foreach (var (hub, index) in VisibleHubs.Select((h, i) => (h, i)))
         {
-            var isHero = index == 0;
+            var isHero      = index == 0 && !AutomotiveMode.IsActive;
+            var extraClass  = AutomotiveMode.IsActive ? "automotive-tile" : string.Empty;
 
             <BentoItem ColSpan="@(isHero ? 2 : 1)"
                        RowSpan="@(isHero ? 2 : 1)"
-                       GlowColor="@hub.DominantHexColor">
+                       GlowColor="@hub.DominantHexColor"
+                       Class="@extraClass">
 
                 <div class="bento-hub-content" @onclick="() => OnHubSelected.InvokeAsync(hub)">
 
                     @* ── Type badge row ── *@
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
                         <MudIcon Icon="@GetMediaIcon(hub.MediaTypes)"
-                                 Style="@($"color: {hub.DominantHexColor}; font-size: 16px;")" />
+                                 Style="@($"color: {hub.DominantHexColor}; font-size: {(AutomotiveMode.IsActive ? "24px" : "16px")};")" />
                         <MudText Typo="Typo.overline"
                                  Style="@($"color: {hub.DominantHexColor}; letter-spacing: 0.1em;")">
                             @hub.MediaTypes
@@ -30,7 +44,8 @@
                     </MudStack>
 
                     @* ── Title ── *@
-                    <MudText Typo="@(isHero ? Typo.h5 : Typo.h6)" Class="mb-1">
+                    <MudText Typo="@(isHero ? Typo.h5 : (AutomotiveMode.IsActive ? Typo.h5 : Typo.h6))"
+                             Class="mb-1">
                         @hub.DisplayName
                     </MudText>
 
@@ -40,14 +55,29 @@
                     </MudText>
 
                     @* ── Date — pushed to bottom *@
-                    <MudText Typo="Typo.caption" Color="Color.Tertiary" Class="mt-auto pt-3">
-                        Added @hub.CreatedAt.LocalDateTime.ToString("MMM d, yyyy")
-                    </MudText>
+                    @if (!AutomotiveMode.IsActive)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Tertiary" Class="mt-auto pt-3">
+                            Added @hub.CreatedAt.LocalDateTime.ToString("MMM d, yyyy")
+                        </MudText>
+                    }
 
                 </div>
             </BentoItem>
         }
     </BentoGrid>
+}
+else if (AutomotiveMode.IsActive && Hubs is { Count: > 0 })
+{
+    @* Automotive Mode is on but no audio hubs exist yet *@
+    <MudPaper Class="pa-8 d-flex flex-column align-center" Elevation="0" Outlined="true">
+        <MudIcon Icon="@Icons.Material.Filled.Headphones"
+                 Size="Size.Large" Color="Color.Secondary" Class="mb-3" />
+        <MudText Typo="Typo.h6" Class="mb-2">No Audio Hubs</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            Automotive Mode shows audio content only. Add audiobooks or music to your library.
+        </MudText>
+    </MudPaper>
 }
 else
 {
@@ -66,11 +96,31 @@ else
     [Parameter] public string?                     Class         { get; set; }
     [Parameter] public EventCallback<HubViewModel> OnHubSelected { get; set; }
 
+    /// <summary>
+    /// Filtered hub list: in Automotive Mode only Audio-type hubs are shown.
+    /// In normal mode every hub passes through.
+    /// </summary>
+    private List<HubViewModel> VisibleHubs =>
+        Hubs is null
+            ? []
+            : AutomotiveMode.IsActive
+                ? Hubs.Where(h => h.Works.Any(w => UniverseMapper.IsAudio(w.MediaType))).ToList()
+                : Hubs;
+
+    protected override void OnInitialized() =>
+        AutomotiveMode.OnChanged += OnAutomotiveChanged;
+
+    private void OnAutomotiveChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() =>
+        AutomotiveMode.OnChanged -= OnAutomotiveChanged;
+
     private static string GetMediaIcon(string mediaTypes) => mediaTypes.ToLowerInvariant() switch
     {
         var t when t.Contains("epub")  => Icons.Material.Filled.MenuBook,
         var t when t.Contains("video") => Icons.Material.Filled.VideoFile,
         var t when t.Contains("comic") => Icons.Material.Filled.AutoStories,
+        var t when t.Contains("audio") => Icons.Material.Filled.Headphones,
         _                              => Icons.Material.Filled.Folder,
     };
 }

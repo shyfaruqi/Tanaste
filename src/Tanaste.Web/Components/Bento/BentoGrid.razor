@@ -14,6 +14,7 @@
 }
 
 <style>
+    /* Default: fluid auto-fill grid */
     .bento-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -21,9 +22,23 @@
         width: 100%;
     }
 
+    /* Desktop: force 4-column layout */
     @@media (min-width: 960px) {
         .bento-grid {
             grid-template-columns: repeat(4, 1fr);
+        }
+    }
+
+    /* Mobile — single-column stack; ColSpan/RowSpan are reset so the hero tile
+       does not dominate a narrow screen. */
+    @@media (max-width: 600px) {
+        .bento-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .bento-grid .bento-item {
+            grid-column: span 1 !important;
+            grid-row:    span 1 !important;
         }
     }
 </style>

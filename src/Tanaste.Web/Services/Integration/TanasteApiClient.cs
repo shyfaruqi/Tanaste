@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Tanaste.Web.Models.ViewDTOs;
+using System.Net;
 
 namespace Tanaste.Web.Services.Integration;
 
@@ -87,6 +88,78 @@ public sealed class TanasteApiClient : ITanasteApiClient
         catch { return false; }
     }
 
+    // ── GET /hubs/search ─────────────────────────────────────────────────────
+
+    public async Task<List<SearchResultViewModel>> SearchWorksAsync(
+        string query,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var encoded = WebUtility.UrlEncode(query);
+            var raw = await _http.GetFromJsonAsync<List<SearchRawResult>>(
+                $"/hubs/search?q={encoded}", ct);
+            return raw?.Select(r => new SearchResultViewModel
+            {
+                WorkId         = r.WorkId,
+                HubId          = r.HubId,
+                Title          = r.Title,
+                Author         = r.Author,
+                MediaType      = r.MediaType,
+                HubDisplayName = r.HubDisplayName,
+            }).ToList() ?? [];
+        }
+        catch { return []; }
+    }
+
+    // ── /admin/api-keys ───────────────────────────────────────────────────────
+
+    public async Task<List<ApiKeyViewModel>> GetApiKeysAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            var raw = await _http.GetFromJsonAsync<List<ApiKeyRaw>>("/admin/api-keys", ct);
+            return raw?.Select(r => new ApiKeyViewModel
+            {
+                Id        = r.Id,
+                Label     = r.Label,
+                CreatedAt = r.CreatedAt,
+            }).ToList() ?? [];
+        }
+        catch { return []; }
+    }
+
+    public async Task<NewApiKeyViewModel?> CreateApiKeyAsync(
+        string label,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var body = new { label };
+            var resp = await _http.PostAsJsonAsync("/admin/api-keys", body, ct);
+            if (!resp.IsSuccessStatusCode) return null;
+            var raw  = await resp.Content.ReadFromJsonAsync<NewApiKeyRaw>(ct);
+            return raw is null ? null : new NewApiKeyViewModel
+            {
+                Id        = raw.Id,
+                Label     = raw.Label,
+                Key       = raw.Key,
+                CreatedAt = raw.CreatedAt,
+            };
+        }
+        catch { return null; }
+    }
+
+    public async Task<bool> RevokeApiKeyAsync(Guid id, CancellationToken ct = default)
+    {
+        try
+        {
+            var resp = await _http.DeleteAsync($"/admin/api-keys/{id}", ct);
+            return resp.IsSuccessStatusCode;
+        }
+        catch { return false; }
+    }
+
     // ── Private mapping ───────────────────────────────────────────────────────
 
     private static HubViewModel MapHub(HubRaw h) => HubViewModel.FromApiDto(
@@ -139,4 +212,23 @@ public sealed class TanasteApiClient : ITanasteApiClient
         [property: JsonPropertyName("destination_path")] string  DestinationPath,
         [property: JsonPropertyName("operation_kind")]   string  OperationKind,
         [property: JsonPropertyName("reason")]           string? Reason);
+
+    private sealed record SearchRawResult(
+        [property: JsonPropertyName("work_id")]          Guid    WorkId,
+        [property: JsonPropertyName("hub_id")]           Guid    HubId,
+        [property: JsonPropertyName("title")]            string  Title,
+        [property: JsonPropertyName("author")]           string? Author,
+        [property: JsonPropertyName("media_type")]       string  MediaType,
+        [property: JsonPropertyName("hub_display_name")] string  HubDisplayName);
+
+    private sealed record ApiKeyRaw(
+        [property: JsonPropertyName("id")]         Guid           Id,
+        [property: JsonPropertyName("label")]      string         Label,
+        [property: JsonPropertyName("created_at")] DateTimeOffset CreatedAt);
+
+    private sealed record NewApiKeyRaw(
+        [property: JsonPropertyName("id")]         Guid           Id,
+        [property: JsonPropertyName("label")]      string         Label,
+        [property: JsonPropertyName("key")]        string         Key,
+        [property: JsonPropertyName("created_at")] DateTimeOffset CreatedAt);
 }

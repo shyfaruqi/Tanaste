@@ -1,4 +1,6 @@
 @namespace Tanaste.Web.Shared
+@inject AutomotiveModeService AutomotiveMode
+@implements IDisposable
 
 <MudNavMenu>
     <MudText Typo="Typo.overline" Class="px-4 mt-4 mb-2 mud-text-disabled">Navigation</MudText>
@@ -23,8 +25,39 @@
         Metadata
     </MudNavLink>
 
-    <MudNavLink Href="/admin"
-                Icon="@Icons.Material.Filled.AdminPanelSettings">
-        Admin
+    <MudNavLink Href="/settings"
+                Icon="@Icons.Material.Filled.Settings">
+        Settings
     </MudNavLink>
+
+    <MudDivider Class="my-2" />
+
+    <MudText Typo="Typo.overline" Class="px-4 mt-4 mb-2 mud-text-disabled">Display</MudText>
+
+    <div class="px-2">
+        <MudTooltip Text="@(AutomotiveMode.IsActive ? "Exit Automotive Mode" : "Automotive Mode — large touch targets, audio-only")"
+                    Arrow="true" Placement="Placement.Right">
+            <MudButton FullWidth="true"
+                       Variant="@(AutomotiveMode.IsActive ? Variant.Filled : Variant.Outlined)"
+                       Color="@(AutomotiveMode.IsActive ? Color.Error : Color.Default)"
+                       StartIcon="@Icons.Material.Filled.DirectionsCar"
+                       OnClick="@ToggleAutomotive"
+                       Class="mb-2"
+                       Style="text-transform: none; justify-content: flex-start;">
+                @(AutomotiveMode.IsActive ? "Exit Automotive" : "Automotive Mode")
+            </MudButton>
+        </MudTooltip>
+    </div>
 </MudNavMenu>
+
+@code {
+    protected override void OnInitialized() =>
+        AutomotiveMode.OnChanged += OnAutomotiveChanged;
+
+    private void ToggleAutomotive() => AutomotiveMode.Toggle();
+
+    private void OnAutomotiveChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() =>
+        AutomotiveMode.OnChanged -= OnAutomotiveChanged;
+}

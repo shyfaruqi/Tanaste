@@ -24,4 +24,20 @@ public interface ITanasteApiClient
         string claimKey,
         string chosenValue,
         CancellationToken ct = default);
+
+    /// <summary>GET /hubs/search?q= — full-text search across all works (min 2 chars).</summary>
+    Task<List<SearchResultViewModel>> SearchWorksAsync(
+        string query,
+        CancellationToken ct = default);
+
+    // ── API key management (/admin/api-keys) ──────────────────────────────────
+
+    /// <summary>GET /admin/api-keys — list all issued keys (id, label, created_at).</summary>
+    Task<List<ApiKeyViewModel>> GetApiKeysAsync(CancellationToken ct = default);
+
+    /// <summary>POST /admin/api-keys — generate a new key. Returns key + one-time plaintext.</summary>
+    Task<NewApiKeyViewModel?> CreateApiKeyAsync(string label, CancellationToken ct = default);
+
+    /// <summary>DELETE /admin/api-keys/{id} — revoke a key immediately.</summary>
+    Task<bool> RevokeApiKeyAsync(Guid id, CancellationToken ct = default);
 }

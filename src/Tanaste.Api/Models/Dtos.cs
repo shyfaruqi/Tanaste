@@ -96,6 +96,34 @@ public sealed class UpsertProviderConfigRequest
     public bool IsSecret { get; init; }
 }
 
+// ── GET /hubs/search ───────────────────────────────────────────────────────────
+
+/// <summary>
+/// A single work result from the hub search endpoint.
+/// Carries enough information to render a command-palette result row:
+/// the work's own title, the Hub it belongs to, and its media type for icon selection.
+/// </summary>
+public sealed class SearchResultDto
+{
+    [JsonPropertyName("work_id")]
+    public Guid WorkId { get; init; }
+
+    [JsonPropertyName("hub_id")]
+    public Guid HubId { get; init; }
+
+    [JsonPropertyName("title")]
+    public string Title { get; init; } = string.Empty;
+
+    [JsonPropertyName("author")]
+    public string? Author { get; init; }
+
+    [JsonPropertyName("media_type")]
+    public string MediaType { get; init; } = string.Empty;
+
+    [JsonPropertyName("hub_display_name")]
+    public string HubDisplayName { get; init; } = string.Empty;
+}
+
 // ── GET /hubs ──────────────────────────────────────────────────────────────────
 
 public sealed class HubDto

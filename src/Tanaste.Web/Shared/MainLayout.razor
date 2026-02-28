@@ -8,6 +8,9 @@
 <MudDialogProvider />
 <MudSnackbarProvider />
 
+@* Global Command Palette — mounted at layout level so it floats above all page content *@
+<CommandPalette @ref="_palette" />
+
 <MudLayout>
     <MudAppBar Elevation="2">
         <MudIconButton Icon="@Icons.Material.Filled.Menu"
@@ -19,6 +22,14 @@
         <MudText Typo="Typo.h6" Class="ml-3 mud-text-secondary">Tanaste</MudText>
 
         <MudSpacer />
+
+        @* Search button — Ctrl+K shortcut hint *@
+        <MudTooltip Text="Search (Ctrl+K)" Arrow="true" Placement="Placement.Bottom">
+            <MudIconButton Icon="@Icons.Material.Filled.Search"
+                           Color="Color.Inherit"
+                           OnClick="@(() => _palette?.Toggle())"
+                           title="Search (Ctrl+K)" />
+        </MudTooltip>
 
         <MudIconButton Icon="@(_isDark ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
                        Color="Color.Inherit"
@@ -45,11 +56,25 @@
     private bool _isDark     = true;
     private bool _drawerOpen = true;
 
+    private CommandPalette? _palette;
+
     protected override void OnInitialized()
     {
         _isDark = ThemeService.IsDarkMode;
         ThemeService.OnThemeChanged += OnThemeUpdated;
     }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Register Ctrl+K to open the Command Palette.
+            await JS.InvokeVoidAsync("registerCtrlK", DotNetObjectReference.Create(this));
+        }
+    }
+
+    [JSInvokable]
+    public void OpenPalette() => _palette?.Open();
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
@@ -66,4 +91,6 @@
     }
 
     public void Dispose() => ThemeService.OnThemeChanged -= OnThemeUpdated;
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
 }

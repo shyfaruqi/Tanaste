@@ -26,6 +26,7 @@ public sealed class UniverseViewModel
     public int BookCount   => Items.Count(i => i.MediaTypeBucket == MediaTypeBucket.Book);
     public int VideoCount  => Items.Count(i => i.MediaTypeBucket == MediaTypeBucket.Video);
     public int ComicCount  => Items.Count(i => i.MediaTypeBucket == MediaTypeBucket.Comic);
+    public int AudioCount  => Items.Count(i => i.MediaTypeBucket == MediaTypeBucket.Audio);
 }
 
 /// <summary>
@@ -64,5 +65,6 @@ public enum MediaTypeBucket
     Book,
     Video,
     Comic,
+    Audio,
     Unknown,
 }
