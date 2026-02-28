@@ -82,6 +82,63 @@ public sealed class DatabaseConnection : IDatabaseConnection
         using var optimizeCmd = conn.CreateCommand();
         optimizeCmd.CommandText = "PRAGMA optimize;";
         optimizeCmd.ExecuteNonQuery();
+
+        // ── Incremental schema migrations ─────────────────────────────────────
+        // Each migration is guarded by a column-presence check so it is safe
+        // to run on every startup (idempotent).
+
+        // Migration M-001: Phase 8 – add is_user_locked to metadata_claims.
+        // Databases created before Phase 8 will not have this column; the ALTER
+        // TABLE adds it with DEFAULT 0 so all existing rows are treated as unlocked.
+        MigrateAddColumnIfMissing(
+            conn,
+            table:  "metadata_claims",
+            column: "is_user_locked",
+            ddl:    "ALTER TABLE metadata_claims " +
+                    "ADD COLUMN is_user_locked INTEGER NOT NULL DEFAULT 0 " +
+                    "CHECK (is_user_locked IN (0, 1));");
+    }
+
+    // -------------------------------------------------------------------------
+    // Migration helpers
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Adds a column to <paramref name="table"/> if it does not yet exist.
+    /// Uses <c>PRAGMA table_info</c> for the check — SQLite does not support
+    /// <c>ALTER TABLE … ADD COLUMN IF NOT EXISTS</c> syntax.
+    /// </summary>
+    private static void MigrateAddColumnIfMissing(
+        SqliteConnection conn,
+        string table,
+        string column,
+        string ddl)
+    {
+        // PRAGMA table_info returns one row per column; we just need to know
+        // whether the named column is present.
+        bool exists = false;
+        using (var infoCmd = conn.CreateCommand())
+        {
+            infoCmd.CommandText = $"PRAGMA table_info({table});";
+            using var reader = infoCmd.ExecuteReader();
+            while (reader.Read())
+            {
+                // Column 1 in PRAGMA table_info is "name".
+                if (string.Equals(reader.GetString(1), column,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+
+        if (!exists)
+        {
+            using var alterCmd = conn.CreateCommand();
+            alterCmd.CommandText = ddl;
+            alterCmd.ExecuteNonQuery();
+        }
     }
 
     /// <summary>

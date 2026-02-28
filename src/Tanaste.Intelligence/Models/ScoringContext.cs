@@ -40,4 +40,24 @@ public sealed class ScoringContext
     /// Use <see cref="ScoringConfiguration"/> defaults when no explicit config is available.
     /// </summary>
     public required ScoringConfiguration Configuration { get; init; }
+
+    /// <summary>
+    /// Optional per-provider, per-field weight overrides.
+    /// Outer key = <c>ProviderId</c>; inner key = claim key (e.g. <c>"cover"</c>,
+    /// <c>"narrator"</c>); value = weight in [0.0, 1.0].
+    ///
+    /// When the scoring engine resolves a field it consults this map first:
+    ///   effective weight = ProviderFieldWeights[providerId][fieldKey]
+    ///                      ?? ProviderWeights[providerId]
+    ///                      ?? 1.0 (absolute fallback)
+    ///
+    /// <c>null</c> means "no field-specific overrides — use ProviderWeights for all fields."
+    /// Existing callers that do not supply field weights continue to work unchanged.
+    ///
+    /// Populated from <c>tanaste_master.json → providers[*].field_weights</c> at scoring
+    /// time, keyed by the resolved provider GUID from <c>provider_registry</c>.
+    /// Spec: Phase 8 – Field-Level Weight Matrix.
+    /// </summary>
+    public IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, double>>?
+        ProviderFieldWeights { get; init; }
 }

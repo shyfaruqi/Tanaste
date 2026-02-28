@@ -61,13 +61,16 @@ The grid uses an asymmetric **Bento layout** — wider tiles for your most recen
 
 > *Live updates are pushed directly to your browser via the Intercom channel the moment a new file is detected — no page refresh, no manual sync. The Dashboard is always a real-time reflection of what the Engine knows.*
 
-### 🤖 The Intelligence Engine (Weighted Voter)
-Tanaste never asks you to manually enter a title, year, or author. Instead, it uses a **Weighted Voter** system:
+### 🤖 The Intelligence Engine (Field-Specific Weighted Voter)
+Tanaste never asks you to manually enter a title, year, or author. Instead, it uses a **Field-Specific Weighted Voter** system:
 
 - Every piece of metadata from every source (embedded file tags, filenames, external providers) is recorded as a **Claim**
-- Each Claim carries a trust weight based on how reliable its source is (e.g. an embedded OPF record outranks a filename guess)
-- The Voter tallies all Claims for each metadata field and elects a winner — the **Canonical Value**
+- Each Claim carries a **per-field trust weight** based on how reliable its source is *for that specific kind of data* — for example, Audnexus is authoritative for audiobook narrators (weight 0.9), while Open Library excels at series data (weight 0.9) but is not a dedicated cover-art source
+- The Voter tallies all Claims for each metadata field independently and elects a winner — the **Canonical Value** — using only that field's weights
 - If the vote is too close to call, the conflict is surfaced in the dashboard for a single human decision — the only time you ever need to intervene
+- **User-Locked Claims** — when you manually set a metadata value, that claim is locked. The engine gives it a weight of 1.0 and cannot override it on any future re-score
+
+Provider trust levels are **never hard-coded**. Every weight lives in `tanaste_master.json` so you can tune them at any time without touching code.
 
 All original Claims are preserved forever. Nothing is overwritten. Full audit history, always.
 

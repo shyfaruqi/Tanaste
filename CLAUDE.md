@@ -145,9 +145,9 @@ Inside `src/Tanaste.Web`, the code is organised by *what it does*, not by *what 
 
 **Why this matters to the business:** Once configured, the library manages itself. Drop files in; Tanaste does the rest.
 
-### 3.2 — The Weighted Voter (Intelligence Engine)
+### 3.2 — The Field-Specific Weighted Voter (Intelligence Engine)
 
-**Plain English:** Different information sources disagree about a file's title, author, or year. The Weighted Voter holds an election to determine the truth.
+**Plain English:** Different information sources disagree about a file's title, author, or year. The Weighted Voter holds an election to determine the truth — and each source's authority is judged *separately for each type of data*.
 
 Each piece of metadata (e.g. the title "Dune") is a **Claim**. Claims come from multiple sources:
 
@@ -155,9 +155,15 @@ Each piece of metadata (e.g. the title "Dune") is a **Claim**. Claims come from 
 |---|---|---|
 | File's internal metadata (OPF/ID3) | `title = "Dune"` | High (0.9) |
 | Filename | `dune_part1.epub` | Medium (0.5) |
-| External metadata provider | `Dune (Frank Herbert, 1965)` | Configurable |
+| External metadata provider | `Dune (Frank Herbert, 1965)` | Configurable per field |
 
-The Voter tallies all Claims for each metadata field. The winning Claim becomes the **Canonical Value** — the single trusted answer used by the Dashboard.
+The key upgrade over a simple weighted vote: each provider carries a **per-field trust weight** that reflects how reliable it is *for that specific kind of data*. Audnexus is the gold standard for audiobook narrators (weight 0.9) and series data (0.9) but is only moderately trusted for cover art. Wikidata is the definitive authority for franchise identifiers (weight 1.0). Apple Books splits into two provider entries — one for ebooks, one for audiobooks — because its field-weight profile differs between the two domains.
+
+All of these weights live in `tanaste_master.json` and can be changed at any time without touching code.
+
+**User-Locked Claims:** When you manually set a metadata value, that Claim is permanently locked. The engine gives it a confidence of 1.0 and never overrides it on any future re-score — regardless of what any external provider says.
+
+The Voter tallies all Claims for each metadata field independently. The winning Claim becomes the **Canonical Value** — the single trusted answer used by the Dashboard.
 
 If two Claims are too close to pick a clear winner, the field is flagged as **Conflicted** and surfaced to the user for manual resolution.
 
@@ -165,6 +171,9 @@ If two Claims are too close to pick a clear winner, the field is flagged as **Co
 - **No human help needed** for well-tagged files — the library builds itself.
 - **Transparent conflicts** — the user is only bothered when the machine genuinely cannot decide.
 - **Provenance preserved** — every Claim is kept forever (append-only). History is never lost.
+- **Reliability** — user-set values can never be silently overridden by the scoring engine.
+- **Maintenance** — all weights live in `tanaste_master.json`; zero code changes needed to re-tune trust levels.
+- **Extensibility** — future providers simply declare their field weights in the JSON; the engine picks them up with no new code.
 
 ### 3.3 — Security: Secret Store & Guest Keys
 

@@ -3,6 +3,25 @@ using System.Text.Json.Serialization;
 namespace Tanaste.Storage.Models;
 
 /// <summary>
+/// The media domain a provider specialises in.
+/// Used for UI grouping and as metadata when building scoring contexts;
+/// the Intelligence engine itself is domain-agnostic.
+/// Spec: Phase 8 – Categorized Provider Registry.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum ProviderDomain
+{
+    /// <summary>Applies across all media types (e.g. Wikidata, local filesystem).</summary>
+    Universal,
+    /// <summary>E-book oriented provider (e.g. Open Library, Apple Books for books).</summary>
+    Ebook,
+    /// <summary>Audiobook oriented provider (e.g. Audnexus, Apple Books for audio).</summary>
+    Audiobook,
+    /// <summary>Film and TV oriented provider (e.g. TMDB, IMDb).</summary>
+    Video,
+}
+
+/// <summary>
 /// Root model for <c>tanaste_master.json</c>.
 /// Contains environment-level bootstrap settings for the Tanaste platform.
 /// Spec: Phase 4 – Configuration Management responsibility.
@@ -63,11 +82,45 @@ public sealed class ProviderBootstrap
     public bool Enabled { get; set; } = true;
 
     /// <summary>
-    /// Default scoring weight for this provider.
+    /// Default scoring weight for this provider across all metadata fields.
     /// Consumed by the scoring engine; not stored in this table.
+    /// Individual fields can be overridden via <see cref="FieldWeights"/>.
     /// </summary>
     [JsonPropertyName("weight")]
     public double Weight { get; set; } = 1.0;
+
+    /// <summary>
+    /// The media domain this provider specialises in.
+    /// Informational: used for UI grouping and future domain-filtered scoring.
+    /// Spec: Phase 8 – Categorized Provider Registry § Domain.
+    /// </summary>
+    [JsonPropertyName("domain")]
+    public ProviderDomain Domain { get; set; } = ProviderDomain.Universal;
+
+    /// <summary>
+    /// Declarative list of metadata fields this provider is considered an expert in
+    /// (e.g. <c>["cover", "narrator", "series"]</c>).
+    /// Informational: shown in the UI to explain why a particular provider's value
+    /// was chosen; the actual trust level is encoded in <see cref="FieldWeights"/>.
+    /// Spec: Phase 8 – Categorized Provider Registry § Capability Tags.
+    /// </summary>
+    [JsonPropertyName("capability_tags")]
+    public List<string> CapabilityTags { get; set; } = [];
+
+    /// <summary>
+    /// Per-field weight overrides that replace <see cref="Weight"/> for specific
+    /// metadata fields.  Key = claim key (e.g. <c>"cover"</c>, <c>"narrator"</c>,
+    /// <c>"series"</c>).  Value = weight in [0.0, 1.0].
+    ///
+    /// When the scoring engine resolves a field, it looks up the provider's entry
+    /// here first; if absent, it falls back to <see cref="Weight"/>.
+    ///
+    /// These values are loaded from <c>tanaste_master.json</c> and injected into
+    /// <c>ScoringContext.ProviderFieldWeights</c> at scoring time — never hard-coded.
+    /// Spec: Phase 8 – Field-Level Weight Matrix.
+    /// </summary>
+    [JsonPropertyName("field_weights")]
+    public Dictionary<string, double> FieldWeights { get; set; } = [];
 }
 
 /// <summary>

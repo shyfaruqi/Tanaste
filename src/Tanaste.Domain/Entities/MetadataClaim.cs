@@ -59,4 +59,16 @@ public sealed class MetadataClaim
     /// Maps to <c>metadata_claims.claimed_at</c> (ISO-8601 TEXT in SQLite).
     /// </summary>
     public DateTimeOffset ClaimedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>
+    /// When <c>true</c>, the scoring engine treats this claim as the unconditional
+    /// winner for its field (confidence 1.0) and ignores all competing claims.
+    ///
+    /// This flag is ONLY set by explicit user action (a manual metadata override).
+    /// No automated processor, file scanner, or external provider may set it.
+    ///
+    /// Spec: Phase 8 – Field-Level Arbitration § User-Locked Claims.
+    /// Maps to <c>metadata_claims.is_user_locked</c> (INTEGER 0/1 in SQLite).
+    /// </summary>
+    public bool IsUserLocked { get; set; } = false;
 }

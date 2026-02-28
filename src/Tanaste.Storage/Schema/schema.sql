@@ -99,7 +99,12 @@ CREATE TABLE IF NOT EXISTS metadata_claims (
     confidence  REAL NOT NULL DEFAULT 1.0,
     -- Timestamp used by the scoring engine for stale-claim time-decay.
     -- Spec: Phase 6 – Stale Claim Handling.
-    claimed_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    claimed_at     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+    -- When 1, the scoring engine treats this claim as unconditional winner
+    -- (confidence 1.0); no automated provider may set this to 1.
+    -- Spec: Phase 8 – Field-Level Arbitration § User-Locked Claims.
+    is_user_locked INTEGER NOT NULL DEFAULT 0
+                       CHECK (is_user_locked IN (0, 1))
 );
 
 -- Composite PK (entity_id, key) forms the property-bag for canonical values.
