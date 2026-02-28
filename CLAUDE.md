@@ -11,6 +11,21 @@
 
 ### What is Tanaste?
 
+#### Name & Vision
+
+The name **Tanaste** is derived from Tolkien's Quenya (High-Elvish) language, where *tanas* carries the meaning of **"Presentation"** — the act of bringing something forward and making it whole.
+
+This is the project's core philosophy: Tanaste does not create a library. It **presents** one. The stories already exist on the hard drive, fragmented across formats and folders. Tanaste's job is to find them, understand them, unify them, and surface the result as something coherent and beautiful — as if it always belonged together.
+
+Every feature exists in service of that word:
+- The **Intelligence Engine** works invisibly so the library is already whole when you look at it.
+- The **Hub** is the act of presentation made structural — the book, film, and audiobook of the same story brought forward as one.
+- The **Bento Dashboard** is the presentation layer made visible — the interface where the Engine's understanding reaches the screen.
+
+> **All future sessions must preserve this creative context.** When writing copy, naming features, or explaining the product, the Presentation philosophy should be the frame.
+
+#### What it does
+
 **Tanaste** is a **unified media intelligence platform** that runs entirely on your own machine — no cloud account, no subscription, no data leaving your home.
 
 Its core job is to bring order to a large, messy media collection spread across folders. You point it at your hard drive, and it automatically:

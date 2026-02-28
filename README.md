@@ -18,13 +18,35 @@
 
 ---
 
+## 📖 The Name Tanaste
+
+The name **Tanaste** is drawn from Tolkien's Quenya — the High-Elvish language constructed for *The Lord of the Rings*. In Quenya, *tanas* carries the meaning of **"Presentation"**: the act of bringing something forward, making it known, giving it form.
+
+That single word is the entire design philosophy of this project.
+
+Your media collection already exists. The stories are already there — scattered across folders, split into formats, buried under inconsistent filenames. Tanaste does not create your library. It **presents** it. It takes the raw, fragmented reality of files on a hard drive and surfaces it as something coherent, beautiful, and navigable.
+
+> *"Tanaste: to present, to bring forth, to make appear as one."*
+
+Every feature in this project is an expression of that word:
+
+- The **Intelligence Engine** works silently in the background so that when you finally look at your library, it is already whole — presented, not assembled.
+- The **Hub** is the act of presentation made structural: the book, the film, and the audiobook of the same story do not live in separate places. They are brought forward together, as one.
+- The **Bento Dashboard** is where the internal act of presentation becomes visible — the translucent, glass-surfaced interface that is the final form of everything the Engine has already understood.
+
+The name is a quiet promise: whatever you add to this system, Tanaste will find its place, understand its context, and present it back to you as if it always belonged there.
+
+---
+
 ## 🧠 What is Tanaste?
 
 You have a book. Then you find the movie adaptation. Then you grab the audiobook for the commute. Three files. Three folders. Three separate apps. Zero connection between them.
 
-**Tanaste solves this.**
+**Tanaste presents them as one.**
 
-Drop your files into a Watch Folder, and Tanaste's Intelligence Engine automatically reads the metadata inside each file, scores it for reliability, and groups everything that belongs to the same story into a single **Hub**. The Hub for *Dune* holds your EPUB, your 4K video, your audiobook, and your comic — unified, cross-referenced, and browsable from one place.
+Drop your files into a Watch Folder, and Tanaste's Intelligence Engine automatically reads the metadata inside each file, scores it for reliability, and groups everything that belongs to the same story into a single **Hub**. The Hub for *Dune* becomes the single, unified presentation of that story in your collection — your EPUB, your 4K video, your audiobook, and your comic all brought forward together into one visual tile. You navigate by story, not by file type or folder.
+
+The Bento Dashboard is where this act of presentation reaches the screen: a glassmorphic, asymmetric grid of Hub tiles that reflects what the Intelligence Engine already knows about your library. The interface is the presentation layer. Everything behind it is inference and order.
 
 Everything runs on your own machine. No account. No subscription. No data sent anywhere.
 
@@ -33,9 +55,11 @@ Everything runs on your own machine. No account. No subscription. No data sent a
 ## ✨ Key Features
 
 ### 📊 The Bento Dashboard
-A visual, browser-based library overview built with an asymmetric **Bento Grid** layout — wider tiles for your most recently visited Hubs, narrower tiles for the rest. Each card uses **glassmorphic styling** (translucent glass effect with soft glows) that adapts to the dominant colour of your media. A global **Command Palette** (activated with `Ctrl+K`) lets you jump to any Hub or page instantly.
+The Bento Dashboard is the physical **Presentation layer** — the visible surface of everything the Intelligence Engine has already silently understood about your library. It requires no manual curation: the layout reflects what is actually in your collection, and updates the moment something changes.
 
-> *The UI is built as a Blazor Server dashboard — it runs on your server and renders in any browser, with live updates pushed via SignalR the moment a new file is detected.*
+The grid uses an asymmetric **Bento layout** — wider tiles for your most recently visited Hubs, narrower tiles for the rest — so the shape of the interface naturally mirrors how you actually use your library. Each card uses **glassmorphic styling** (a translucent glass effect with soft depth and colour glows) drawn from the dominant colour of the Hub's media. A global **Command Palette** (activated with `Ctrl+K`) lets you navigate the entire library by name without touching the mouse.
+
+> *Live updates are pushed directly to your browser via the Intercom channel the moment a new file is detected — no page refresh, no manual sync. The Dashboard is always a real-time reflection of what the Engine knows.*
 
 ### 🤖 The Intelligence Engine (Weighted Voter)
 Tanaste never asks you to manually enter a title, year, or author. Instead, it uses a **Weighted Voter** system:
