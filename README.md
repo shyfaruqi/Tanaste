@@ -20,7 +20,7 @@
 
 ## 📖 The Name Tanaste
 
-The name **Tanaste** is drawn from Tolkien's Quenya — the High-Elvish language constructed for *The Lord of the Rings*. In Quenya, *tanas* carries the meaning of **"Presentation"**: the act of bringing something forward, making it known, giving it form.
+The name **Tanaste** is drawn from Tolkien's Quenya — the High-Elvish language constructed for *The Lord of the Rings*. In Quenya, *tanaste* carries the meaning of **"Presentation"**: the act of bringing something forward, making it known, giving it form.
 
 That single word is the entire design philosophy of this project.
 
