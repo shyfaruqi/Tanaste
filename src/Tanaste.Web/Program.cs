@@ -21,14 +21,16 @@ builder.Services.AddSingleton<ThemeService>();
 var apiBase = builder.Configuration["TanasteApi:BaseUrl"] ?? "http://localhost:61495";
 var apiKey  = builder.Configuration["TanasteApi:ApiKey"]  ?? string.Empty;
 
-builder.Services.AddHttpClient<TanasteApiClient>(client =>
+// AddHttpClient<IClient, TClient> wires the interface directly to the typed-client
+// factory so the HttpClient it receives has the correct BaseAddress and default headers.
+// A separate AddScoped<IClient, TClient> would resolve HttpClient via the default
+// (unconfigured, no BaseAddress) registration, causing every Engine call to fail silently.
+builder.Services.AddHttpClient<ITanasteApiClient, TanasteApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBase);
     if (!string.IsNullOrWhiteSpace(apiKey))
         client.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
 });
-
-builder.Services.AddScoped<ITanasteApiClient, TanasteApiClient>();
 
 // ── State + Orchestration (scoped = one per SignalR circuit) ──────────────────
 builder.Services.AddScoped<UniverseStateContainer>();
