@@ -157,6 +157,9 @@ public sealed class UIOrchestratorService : IAsyncDisposable
     public Task<bool> UpdateProviderAsync(string name, bool enabled, CancellationToken ct = default)
         => _api.UpdateProviderAsync(name, enabled, ct);
 
+    /// <summary>Most recent error detail from the last failed API call.</summary>
+    public string? LastApiError => _api.LastError;
+
     // ── SignalR Intercom ───────────────────────────────────────────────────────
 
     /// <summary>

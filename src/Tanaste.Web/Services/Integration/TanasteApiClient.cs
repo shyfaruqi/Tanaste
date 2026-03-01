@@ -1,7 +1,8 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
 using Tanaste.Web.Models.ViewDTOs;
-using System.Net;
 
 namespace Tanaste.Web.Services.Integration;
 
@@ -12,9 +13,14 @@ namespace Tanaste.Web.Services.Integration;
 /// </summary>
 public sealed class TanasteApiClient : ITanasteApiClient
 {
-    private readonly HttpClient _http;
+    private readonly HttpClient                      _http;
+    private readonly ILogger<TanasteApiClient>        _logger;
 
-    public TanasteApiClient(HttpClient http) => _http = http;
+    public TanasteApiClient(HttpClient http, ILogger<TanasteApiClient> logger)
+    {
+        _http   = http;
+        _logger = logger;
+    }
 
     // ── GET /system/status ────────────────────────────────────────────────────
 
@@ -182,7 +188,12 @@ public sealed class TanasteApiClient : ITanasteApiClient
         {
             return await _http.GetFromJsonAsync<FolderSettingsDto>("/settings/folders", ct);
         }
-        catch { return null; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "GET /settings/folders failed");
+            LastError = ex.Message;
+            return null;
+        }
     }
 
     public async Task<bool> UpdateFolderSettingsAsync(
@@ -193,9 +204,24 @@ public sealed class TanasteApiClient : ITanasteApiClient
         {
             var body = new { watch_directory = settings.WatchDirectory, library_root = settings.LibraryRoot };
             var resp = await _http.PutAsJsonAsync("/settings/folders", body, ct);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var detail = await resp.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning(
+                    "PUT /settings/folders returned {Status}: {Detail}",
+                    (int)resp.StatusCode, detail);
+                LastError = $"HTTP {(int)resp.StatusCode}: {detail}";
+            }
+
             return resp.IsSuccessStatusCode;
         }
-        catch { return false; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "PUT /settings/folders failed");
+            LastError = ex.Message;
+            return false;
+        }
     }
 
     public async Task<PathTestResultDto?> TestPathAsync(
@@ -206,10 +232,25 @@ public sealed class TanasteApiClient : ITanasteApiClient
         {
             var body = new { path };
             var resp = await _http.PostAsJsonAsync("/settings/test-path", body, ct);
-            if (!resp.IsSuccessStatusCode) return null;
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var detail = await resp.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning(
+                    "POST /settings/test-path returned {Status}: {Detail}",
+                    (int)resp.StatusCode, detail);
+                LastError = $"HTTP {(int)resp.StatusCode}: {detail}";
+                return null;
+            }
+
             return await resp.Content.ReadFromJsonAsync<PathTestResultDto>(ct);
         }
-        catch { return null; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "POST /settings/test-path failed");
+            LastError = ex.Message;
+            return null;
+        }
     }
 
     public async Task<IReadOnlyList<ProviderStatusDto>> GetProviderStatusAsync(
@@ -220,7 +261,12 @@ public sealed class TanasteApiClient : ITanasteApiClient
             var raw = await _http.GetFromJsonAsync<ProviderStatusDto[]>("/settings/providers", ct);
             return raw ?? [];
         }
-        catch { return []; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "GET /settings/providers failed");
+            LastError = ex.Message;
+            return [];
+        }
     }
 
     public async Task<bool> UpdateProviderAsync(
@@ -233,10 +279,32 @@ public sealed class TanasteApiClient : ITanasteApiClient
             var encoded = WebUtility.UrlEncode(name);
             var body    = new { enabled };
             var resp    = await _http.PutAsJsonAsync($"/settings/providers/{encoded}", body, ct);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var detail = await resp.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning(
+                    "PUT /settings/providers/{Name} returned {Status}: {Detail}",
+                    name, (int)resp.StatusCode, detail);
+                LastError = $"HTTP {(int)resp.StatusCode}: {detail}";
+            }
+
             return resp.IsSuccessStatusCode;
         }
-        catch { return false; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "PUT /settings/providers/{Name} failed", name);
+            LastError = ex.Message;
+            return false;
+        }
     }
+
+    /// <summary>
+    /// Most recent error message from the last failed API call.
+    /// Useful for surfacing diagnostic details in the UI.
+    /// Cleared on next successful call.
+    /// </summary>
+    public string? LastError { get; private set; }
 
     // ── Private mapping ───────────────────────────────────────────────────────
 

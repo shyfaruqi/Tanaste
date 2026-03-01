@@ -30,8 +30,15 @@
     }
     else if (_providers.Count == 0)
     {
-        <MudAlert Severity="Severity.Info">
-            No providers are configured. Add provider entries to your manifest to see status here.
+        <MudAlert Severity="@(_errorDetail is not null ? Severity.Error : Severity.Info)">
+            @if (_errorDetail is not null)
+            {
+                <span>Could not load providers: @_errorDetail</span>
+            }
+            else
+            {
+                <span>No providers are configured. Add provider entries to your manifest to see status here.</span>
+            }
         </MudAlert>
     }
     else
@@ -148,6 +155,7 @@
     private bool                             _loading    = true;
     private bool                             _engineDown;
     private bool                             _toggling;
+    private string?                          _errorDetail;
     private IReadOnlyList<ProviderStatusDto> _providers  = [];
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────
@@ -163,6 +171,7 @@
     {
         _loading    = true;
         _engineDown = false;
+        _errorDetail = null;
 
         // Pre-flight: verify the Engine is reachable.
         var status = await Orchestrator.GetSystemStatusAsync();
@@ -174,7 +183,14 @@
         }
 
         _providers = await Orchestrator.GetProviderStatusAsync();
-        _loading   = false;
+
+        // If the Engine is reachable but returned zero providers, check for errors.
+        if (_providers.Count == 0)
+        {
+            _errorDetail = Orchestrator.LastApiError;
+        }
+
+        _loading = false;
     }
 
     private async Task ToggleProviderAsync(string name, bool enabled)

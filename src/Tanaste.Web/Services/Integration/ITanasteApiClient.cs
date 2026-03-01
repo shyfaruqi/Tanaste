@@ -64,4 +64,10 @@ public interface ITanasteApiClient
 
     /// <summary>PUT /settings/providers/{name} — toggle a provider's enabled state.</summary>
     Task<bool> UpdateProviderAsync(string name, bool enabled, CancellationToken ct = default);
+
+    /// <summary>
+    /// Most recent error message from the last failed API call.
+    /// Useful for surfacing diagnostic details in the UI.
+    /// </summary>
+    string? LastError { get; }
 }

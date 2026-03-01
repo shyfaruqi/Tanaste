@@ -203,9 +203,18 @@
         var success = await Orchestrator.UpdateFolderSettingsAsync(dto);
 
         if (success)
+        {
             Snackbar.Add($"Watch Folder active — now watching {_watchDir}", Severity.Success);
+        }
         else
-            Snackbar.Add("Could not save folder settings — please make sure the Engine is running.", Severity.Error);
+        {
+            var detail = Orchestrator.LastApiError;
+            Snackbar.Add(
+                string.IsNullOrEmpty(detail)
+                    ? "Could not save folder settings — please make sure the Engine is running."
+                    : $"Could not save: {detail}",
+                Severity.Error);
+        }
 
         _savingFolders = false;
     }
