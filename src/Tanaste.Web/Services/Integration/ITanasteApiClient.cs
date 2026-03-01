@@ -61,4 +61,7 @@ public interface ITanasteApiClient
 
     /// <summary>GET /settings/providers — enabled state and live reachability for all providers.</summary>
     Task<IReadOnlyList<ProviderStatusDto>> GetProviderStatusAsync(CancellationToken ct = default);
+
+    /// <summary>PUT /settings/providers/{name} — toggle a provider's enabled state.</summary>
+    Task<bool> UpdateProviderAsync(string name, bool enabled, CancellationToken ct = default);
 }

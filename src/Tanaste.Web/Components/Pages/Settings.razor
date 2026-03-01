@@ -1,10 +1,18 @@
 @page "/settings"
 @rendermode InteractiveServer
 @namespace Tanaste.Web.Components.Pages
+@inject NavigationManager Nav
 
 <PageTitle>Settings — Tanaste</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-1">System Hub</MudText>
+<MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
+    <MudText Typo="Typo.h4" Style="flex: 1;">System Hub</MudText>
+    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                   Color="Color.Default"
+                   Size="Size.Medium"
+                   title="Close settings"
+                   OnClick="@(() => Nav.NavigateTo("/"))" />
+</MudStack>
 <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-6">
     Configure where Tanaste looks for files, manage access keys, and monitor source connections.
 </MudText>

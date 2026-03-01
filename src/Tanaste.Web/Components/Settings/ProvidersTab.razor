@@ -1,8 +1,9 @@
 @namespace Tanaste.Web.Components.Settings
 @inject UIOrchestratorService Orchestrator
+@inject ISnackbar Snackbar
 
-@* Metadata Providers — enriched read-only view with domain, capability tags,
-   trust weights, and live reachability status. *@
+@* Metadata Providers — enriched view with domain, capability tags,
+   trust weights, live reachability status, and enable/disable toggle. *@
 
 <MudPaper Elevation="0" Style="@GlassStyle">
 
@@ -11,13 +12,21 @@
         <MudText Typo="Typo.h6">Metadata Providers</MudText>
     </MudStack>
     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
-        These are the sources I use to enrich your library. Each provider contributes
+        These are the sources used to enrich your library. Each provider contributes
         metadata with a per-field trust weight — higher weights win in scoring conflicts.
+        Toggle a provider on or off to control which sources are active.
     </MudText>
 
     @if (_loading)
     {
         <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_engineDown)
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-2">
+            Cannot reach the Engine — please make sure it is running. Provider status
+            will appear once the connection is restored.
+        </MudAlert>
     }
     else if (_providers.Count == 0)
     {
@@ -31,7 +40,7 @@
         {
             <MudPaper Elevation="0" Style="@InnerCardStyle" Class="mb-3">
 
-                @* Row 1: Status dot + Name + Domain badge + Reachability *@
+                @* Row 1: Status dot + Name + Domain badge + Toggle + Reachability *@
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
                     <MudIcon Icon="@Icons.Material.Filled.Circle"
                              Color="@(p.IsReachable ? Color.Success : (p.Enabled ? Color.Error : Color.Default))"
@@ -60,6 +69,12 @@
                              Color="@(p.Enabled ? (p.IsReachable ? Color.Success : Color.Error) : Color.Default)">
                         @(p.Enabled ? (p.IsReachable ? "Reachable" : "Unreachable") : "Disabled")
                     </MudChip>
+
+                    <MudSwitch T="bool"
+                               Value="@p.Enabled"
+                               ValueChanged="@(v => ToggleProviderAsync(p.Name, v))"
+                               Color="Color.Primary"
+                               Disabled="@_toggling" />
                 </MudStack>
 
                 @* Row 2: Capability tags *@
@@ -130,15 +145,57 @@
 
     // ── State ────────────────────────────────────────────────────────────────────
 
-    private bool                             _loading   = true;
-    private IReadOnlyList<ProviderStatusDto> _providers = [];
+    private bool                             _loading    = true;
+    private bool                             _engineDown;
+    private bool                             _toggling;
+    private IReadOnlyList<ProviderStatusDto> _providers  = [];
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────
 
     protected override async Task OnInitializedAsync()
     {
-        _loading   = true;
+        await LoadProvidersAsync();
+    }
+
+    // ── Handlers ─────────────────────────────────────────────────────────────────
+
+    private async Task LoadProvidersAsync()
+    {
+        _loading    = true;
+        _engineDown = false;
+
+        // Pre-flight: verify the Engine is reachable.
+        var status = await Orchestrator.GetSystemStatusAsync();
+        if (status is null)
+        {
+            _engineDown = true;
+            _loading    = false;
+            return;
+        }
+
         _providers = await Orchestrator.GetProviderStatusAsync();
         _loading   = false;
+    }
+
+    private async Task ToggleProviderAsync(string name, bool enabled)
+    {
+        _toggling = true;
+        var ok = await Orchestrator.UpdateProviderAsync(name, enabled);
+
+        if (ok)
+        {
+            Snackbar.Add(
+                enabled ? $"Provider enabled" : $"Provider disabled",
+                enabled ? Severity.Success : Severity.Info);
+            // Refresh the full list to get updated reachability.
+            _providers = await Orchestrator.GetProviderStatusAsync();
+        }
+        else
+        {
+            Snackbar.Add("Could not update provider — please make sure the Engine is running.",
+                Severity.Error);
+        }
+
+        _toggling = false;
     }
 }

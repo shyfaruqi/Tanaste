@@ -132,6 +132,8 @@
         _testingWatch    = true;
         _watchTestResult = await Orchestrator.TestPathAsync(_watchDir);
         _testingWatch    = false;
+        if (_watchTestResult is null)
+            Snackbar.Add("Cannot reach the Engine — please make sure it is running.", Severity.Error);
     }
 
     private async Task TestLibraryPathAsync()
@@ -140,17 +142,34 @@
         _testingLib    = true;
         _libTestResult = await Orchestrator.TestPathAsync(_libraryRoot);
         _testingLib    = false;
+        if (_libTestResult is null)
+            Snackbar.Add("Cannot reach the Engine — please make sure it is running.", Severity.Error);
     }
 
     private async Task SaveFoldersAsync()
     {
         _savingFolders = true;
 
+        // Pre-flight: check that the Engine is reachable before validating paths.
+        var engineStatus = await Orchestrator.GetSystemStatusAsync();
+        if (engineStatus is null)
+        {
+            Snackbar.Add("Cannot reach the Engine — please make sure it is running.", Severity.Error);
+            _savingFolders = false;
+            return;
+        }
+
         // Validate Watch Folder (required — must have read + write).
         if (!string.IsNullOrWhiteSpace(_watchDir))
         {
             var r = await Orchestrator.TestPathAsync(_watchDir);
             _watchTestResult = r;
+            if (r is null)
+            {
+                Snackbar.Add("Cannot reach the Engine — please make sure it is running.", Severity.Error);
+                _savingFolders = false;
+                return;
+            }
             if (r is not { HasRead: true, HasWrite: true })
             {
                 Snackbar.Add("Watch Folder is not accessible — please check the path and permissions.",
@@ -165,6 +184,12 @@
         {
             var r = await Orchestrator.TestPathAsync(_libraryRoot);
             _libTestResult = r;
+            if (r is null)
+            {
+                Snackbar.Add("Cannot reach the Engine — please make sure it is running.", Severity.Error);
+                _savingFolders = false;
+                return;
+            }
             if (r is not { HasRead: true, HasWrite: true })
             {
                 Snackbar.Add("Library Folder is not accessible — please check the path and permissions.",
@@ -180,7 +205,7 @@
         if (success)
             Snackbar.Add($"Watch Folder active — now watching {_watchDir}", Severity.Success);
         else
-            Snackbar.Add("Could not save folder settings — is the Engine running?", Severity.Error);
+            Snackbar.Add("Could not save folder settings — please make sure the Engine is running.", Severity.Error);
 
         _savingFolders = false;
     }

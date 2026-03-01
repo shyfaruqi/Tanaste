@@ -335,6 +335,14 @@ public sealed class TestPathResponse
     public bool HasWrite { get; init; }
 }
 
+// ── PUT /settings/providers/{name} ─────────────────────────────────────────────
+
+public sealed class UpdateProviderRequest
+{
+    [JsonPropertyName("enabled")]
+    public bool Enabled { get; init; }
+}
+
 // ── GET /settings/providers ────────────────────────────────────────────────────
 
 public sealed class ProviderStatusResponse

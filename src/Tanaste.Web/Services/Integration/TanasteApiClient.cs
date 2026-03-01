@@ -223,6 +223,21 @@ public sealed class TanasteApiClient : ITanasteApiClient
         catch { return []; }
     }
 
+    public async Task<bool> UpdateProviderAsync(
+        string            name,
+        bool              enabled,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var encoded = WebUtility.UrlEncode(name);
+            var body    = new { enabled };
+            var resp    = await _http.PutAsJsonAsync($"/settings/providers/{encoded}", body, ct);
+            return resp.IsSuccessStatusCode;
+        }
+        catch { return false; }
+    }
+
     // ── Private mapping ───────────────────────────────────────────────────────
 
     private static HubViewModel MapHub(HubRaw h) => HubViewModel.FromApiDto(

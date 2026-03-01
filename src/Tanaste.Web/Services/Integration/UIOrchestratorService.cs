@@ -153,6 +153,10 @@ public sealed class UIOrchestratorService : IAsyncDisposable
     public Task<IReadOnlyList<ProviderStatusDto>> GetProviderStatusAsync(CancellationToken ct = default)
         => _api.GetProviderStatusAsync(ct);
 
+    /// <summary>Toggles a provider's enabled state in the Engine manifest.</summary>
+    public Task<bool> UpdateProviderAsync(string name, bool enabled, CancellationToken ct = default)
+        => _api.UpdateProviderAsync(name, enabled, ct);
+
     // ── SignalR Intercom ───────────────────────────────────────────────────────
 
     /// <summary>

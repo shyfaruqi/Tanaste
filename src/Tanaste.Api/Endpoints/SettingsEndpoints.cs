@@ -144,6 +144,43 @@ public static class SettingsEndpoints
         .WithSummary("Probes a directory path for existence, read access, and write access.")
         .Produces<TestPathResponse>(StatusCodes.Status200OK);
 
+        // ── PUT /settings/providers/{name} ───────────────────────────────────────
+
+        grp.MapPut("/providers/{name}", (
+            string               name,
+            UpdateProviderRequest request,
+            IStorageManifest     storageManifest) =>
+        {
+            var manifest = storageManifest.Load();
+            var provider = manifest.Providers
+                .FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+            if (provider is null)
+                return Results.NotFound(new { error = $"Provider '{name}' not found." });
+
+            provider.Enabled = request.Enabled;
+            storageManifest.Save(manifest);
+
+            var displayName = _displayNames.TryGetValue(name, out var dn) ? dn : name;
+
+            return Results.Ok(new ProviderStatusResponse
+            {
+                Name           = provider.Name,
+                DisplayName    = displayName,
+                Enabled        = provider.Enabled,
+                IsZeroKey      = true,
+                IsReachable    = false, // Not probed on save — will be checked on next GET.
+                Domain         = provider.Domain.ToString(),
+                CapabilityTags = provider.CapabilityTags,
+                DefaultWeight  = provider.Weight,
+                FieldWeights   = provider.FieldWeights,
+            });
+        })
+        .WithName("UpdateProvider")
+        .WithSummary("Toggles a provider's enabled state and saves to the manifest.")
+        .Produces<ProviderStatusResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status404NotFound);
+
         // ── GET /settings/providers ─────────────────────────────────────────────
 
         grp.MapGet("/providers", async (
