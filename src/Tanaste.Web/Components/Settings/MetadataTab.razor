@@ -2,21 +2,40 @@
 @inject UIOrchestratorService Orchestrator
 @inject ISnackbar Snackbar
 
-@* Metadata Providers — enriched view with domain, capability tags,
-   trust weights, live reachability status, and enable/disable toggle. *@
+@* Metadata Sources — category-grouped provider management with enriched
+   floating cards, trust scores, capability icons, and an "Add Source" wizard.
+
+   Role gating:
+     • Curators see everything read-only (toggles disabled).
+     • Administrators can toggle, edit, and delete sources.
+     • Consumers never reach this tab (AdminOnly=true in SettingsTabBar). *@
 
 <MudPaper Elevation="0" Style="@GlassStyle">
 
+    @* ── Header ────────────────────────────────────────────────────────────── *@
     <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
         <MudIcon Icon="@Icons.Material.Outlined.Cloud" Color="Color.Primary" Class="mr-2" />
-        <MudText Typo="Typo.h6">Metadata Providers</MudText>
+        <MudText Typo="Typo.h6">Metadata Sources</MudText>
+        <MudSpacer />
+        @if (HasAdminAccess)
+        {
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="@OpenWizard"
+                       Disabled="@_loading"
+                       Size="Size.Small">
+                Add Source
+            </MudButton>
+        }
     </MudStack>
     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
-        These are the sources used to enrich your library. Each provider contributes
-        metadata with a per-field trust weight — higher weights win in scoring conflicts.
-        Toggle a provider on or off to control which sources are active.
+        These are the sources that enrich your library with cover art, descriptions,
+        narrator credits, and more. Each source has a Trust Score that determines
+        how much influence it has when different sources disagree about the same detail.
     </MudText>
 
+    @* ── Loading ───────────────────────────────────────────────────────────── *@
     @if (_loading)
     {
         <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
@@ -24,7 +43,7 @@
     else if (_engineDown)
     {
         <MudAlert Severity="Severity.Error" Class="mt-2">
-            Cannot reach the Engine — please make sure it is running. Provider status
+            Cannot reach the Engine — please make sure it is running. Source status
             will appear once the connection is restored.
         </MudAlert>
     }
@@ -33,108 +52,89 @@
         <MudAlert Severity="@(_errorDetail is not null ? Severity.Error : Severity.Info)">
             @if (_errorDetail is not null)
             {
-                <span>Could not load providers: @_errorDetail</span>
+                <span>Could not load sources: @_errorDetail</span>
             }
             else
             {
-                <span>No providers are configured. Add provider entries to your manifest to see status here.</span>
+                <span>No sources are configured. Use "Add Source" to connect an external metadata endpoint.</span>
             }
         </MudAlert>
     }
     else
     {
-        @foreach (var p in _providers)
-        {
-            <MudPaper Elevation="0" Style="@InnerCardStyle" Class="mb-3">
-
-                @* Row 1: Status dot + Name + Domain badge + Toggle + Reachability *@
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-                    <MudIcon Icon="@Icons.Material.Filled.Circle"
-                             Color="@(p.IsReachable ? Color.Success : (p.Enabled ? Color.Error : Color.Default))"
-                             Size="Size.Small" />
-                    <MudText Typo="Typo.subtitle1" Style="flex: 1; min-width: 0; font-weight: 600;">
-                        @p.DisplayName
-                    </MudText>
-
-                    @if (!string.IsNullOrEmpty(p.Domain))
-                    {
-                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                                 Color="Color.Info">
-                            @p.Domain
-                        </MudChip>
-                    }
-
-                    @if (p.IsZeroKey)
-                    {
-                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                                 Color="Color.Warning">
-                            Zero-key
-                        </MudChip>
-                    }
-
-                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined"
-                             Color="@(p.Enabled ? (p.IsReachable ? Color.Success : Color.Error) : Color.Default)">
-                        @(p.Enabled ? (p.IsReachable ? "Reachable" : "Unreachable") : "Disabled")
-                    </MudChip>
-
-                    <MudSwitch T="bool"
-                               Value="@p.Enabled"
-                               ValueChanged="@(v => ToggleProviderAsync(p.Name, v))"
-                               Color="Color.Primary"
-                               Disabled="@_toggling" />
-                </MudStack>
-
-                @* Row 2: Capability tags *@
-                @if (p.CapabilityTags is { Count: > 0 })
-                {
-                    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center"
-                              Class="mb-2" Style="flex-wrap: wrap;">
-                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mr-1">
-                            Expert in:
-                        </MudText>
-                        @foreach (var tag in p.CapabilityTags)
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Primary"
-                                     Variant="Variant.Text">
-                                @tag
+        @* ── Category-grouped providers ────────────────────────────────────── *@
+        <MudExpansionPanels MultiExpansion="true" Elevation="0">
+            @foreach (var group in _groupedProviders)
+            {
+                <MudExpansionPanel Style="background: transparent;"
+                                   Expanded="true">
+                    <TitleContent>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@group.Icon" Size="Size.Small" Color="Color.Primary" />
+                            <MudText Typo="Typo.subtitle2">@group.Label</MudText>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text"
+                                     Color="Color.Default">
+                                @group.Providers.Count
                             </MudChip>
-                        }
-                    </MudStack>
-                }
-
-                @* Row 3: Trust weight *@
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-1">
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">
-                        Default Trust:
-                    </MudText>
-                    <MudText Typo="Typo.caption" Style="font-weight: 600;">
-                        @((p.DefaultWeight * 100).ToString("F0"))%
-                    </MudText>
-                </MudStack>
-
-                @* Row 4: Per-field weights *@
-                @if (p.FieldWeights is { Count: > 0 })
-                {
-                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">
-                        Field-specific trust:
-                    </MudText>
-                    <MudStack Row="true" Spacing="1" Style="flex-wrap: wrap;">
-                        @foreach (var fw in p.FieldWeights.OrderByDescending(kv => kv.Value))
+                        </MudStack>
+                    </TitleContent>
+                    <ChildContent>
+                        @foreach (var p in group.Providers)
                         {
-                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
-                                @fw.Key: @((fw.Value * 100).ToString("F0"))%
-                            </MudChip>
+                            <MetadataProviderCard Provider="@p"
+                                                  IsToggling="@_toggling"
+                                                  IsAdmin="@HasAdminAccess"
+                                                  OnToggle="@HandleToggleAsync"
+                                                  OnEdit="@OpenEditDrawer"
+                                                  OnDelete="@ConfirmDeleteProvider" />
                         }
-                    </MudStack>
-                }
-
-            </MudPaper>
-        }
+                    </ChildContent>
+                </MudExpansionPanel>
+            }
+        </MudExpansionPanels>
     }
 
 </MudPaper>
 
+@* ── Provider Wizard Drawer ────────────────────────────────────────────────── *@
+<ProviderWizard @bind-Open="_wizardOpen"
+                EditingProvider="@_editingProvider" />
+
+@* ── Delete Confirmation Dialog ────────────────────────────────────────────── *@
+<MudDialog @bind-Visible="_deleteConfirmOpen">
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Error" />
+            <MudText Typo="Typo.h6">Remove Source</MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-3">
+            Are you sure you want to remove <strong>@(_deletingProvider?.DisplayName ?? "this source")</strong>?
+        </MudText>
+        <MudAlert Severity="Severity.Info" Dense="true">
+            Source removal requires Engine-side support. This feature is coming soon.
+        </MudAlert>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _deleteConfirmOpen = false)">Cancel</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled"
+                   OnClick="@(() => _deleteConfirmOpen = false)">
+            Understood
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
 @code {
+
+    /// <summary>
+    /// The role of the currently active profile. Controls whether write actions
+    /// (toggle, edit, delete, add) are available.
+    /// </summary>
+    [Parameter] public string CurrentRole { get; set; } = "Administrator";
+
+    private bool HasAdminAccess =>
+        string.Equals(CurrentRole, "Administrator", StringComparison.OrdinalIgnoreCase);
 
     private const string GlassStyle =
         "background: var(--tanaste-glass-bg); " +
@@ -144,19 +144,22 @@
         "border-radius: 32px; " +
         "padding: 32px;";
 
-    private const string InnerCardStyle =
-        "background: var(--tanaste-glass-inner-bg); " +
-        "border: 1px solid var(--tanaste-glass-inner-border); " +
-        "border-radius: 16px; " +
-        "padding: 20px;";
-
     // ── State ────────────────────────────────────────────────────────────────────
 
     private bool                             _loading    = true;
     private bool                             _engineDown;
     private bool                             _toggling;
     private string?                          _errorDetail;
-    private IReadOnlyList<ProviderStatusDto> _providers  = [];
+    private IReadOnlyList<ProviderStatusDto> _providers        = [];
+    private IReadOnlyList<ProviderGroup>     _groupedProviders = [];
+
+    // Wizard state
+    private bool              _wizardOpen;
+    private ProviderStatusDto? _editingProvider;
+
+    // Delete confirmation state
+    private bool              _deleteConfirmOpen;
+    private ProviderStatusDto? _deletingProvider;
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -165,12 +168,12 @@
         await LoadProvidersAsync();
     }
 
-    // ── Handlers ─────────────────────────────────────────────────────────────────
+    // ── Data loading ─────────────────────────────────────────────────────────────
 
     private async Task LoadProvidersAsync()
     {
-        _loading    = true;
-        _engineDown = false;
+        _loading     = true;
+        _engineDown  = false;
         _errorDetail = null;
 
         // Pre-flight: verify the Engine is reachable.
@@ -190,28 +193,84 @@
             _errorDetail = Orchestrator.LastApiError;
         }
 
+        GroupProviders();
         _loading = false;
     }
 
-    private async Task ToggleProviderAsync(string name, bool enabled)
+    // ── Category grouping ────────────────────────────────────────────────────────
+
+    private static readonly string[] DomainOrder = ["Ebook", "Audiobook", "Video", "Universal"];
+
+    private static readonly Dictionary<string, (string Label, string Icon)> DomainMeta =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Ebook"]     = ("Ebooks",     Icons.Material.Filled.MenuBook),
+            ["Audiobook"] = ("Audiobooks", Icons.Material.Filled.Headphones),
+            ["Video"]     = ("Movies",     Icons.Material.Filled.Movie),
+            ["Universal"] = ("Universal",  Icons.Material.Filled.Public),
+        };
+
+    private void GroupProviders()
+    {
+        _groupedProviders = DomainOrder
+            .Select(d =>
+            {
+                var meta = DomainMeta.GetValueOrDefault(d, (Label: d, Icon: Icons.Material.Filled.Help));
+                var items = _providers
+                    .Where(p => string.Equals(p.Domain, d, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                return new ProviderGroup(meta.Label, meta.Icon, items);
+            })
+            .Where(g => g.Providers.Count > 0)
+            .ToList();
+    }
+
+    private sealed record ProviderGroup(
+        string Label,
+        string Icon,
+        IReadOnlyList<ProviderStatusDto> Providers);
+
+    // ── Handlers ─────────────────────────────────────────────────────────────────
+
+    private async Task HandleToggleAsync((string Name, bool Enabled) args)
     {
         _toggling = true;
-        var ok = await Orchestrator.UpdateProviderAsync(name, enabled);
+        var ok = await Orchestrator.UpdateProviderAsync(args.Name, args.Enabled);
 
         if (ok)
         {
             Snackbar.Add(
-                enabled ? $"Provider enabled" : $"Provider disabled",
-                enabled ? Severity.Success : Severity.Info);
+                args.Enabled ? "Source enabled" : "Source disabled",
+                args.Enabled ? Severity.Success : Severity.Info);
             // Refresh the full list to get updated reachability.
             _providers = await Orchestrator.GetProviderStatusAsync();
+            GroupProviders();
         }
         else
         {
-            Snackbar.Add("Could not update provider — please make sure the Engine is running.",
+            Snackbar.Add(
+                "Could not update source — please make sure the Engine is running.",
                 Severity.Error);
         }
 
         _toggling = false;
+    }
+
+    private void OpenWizard()
+    {
+        _editingProvider = null;
+        _wizardOpen      = true;
+    }
+
+    private void OpenEditDrawer(ProviderStatusDto provider)
+    {
+        _editingProvider = provider;
+        _wizardOpen      = true;
+    }
+
+    private void ConfirmDeleteProvider(ProviderStatusDto provider)
+    {
+        _deletingProvider  = provider;
+        _deleteConfirmOpen = true;
     }
 }

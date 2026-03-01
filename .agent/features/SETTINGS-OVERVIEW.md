@@ -48,9 +48,11 @@ The user opens Server Settings from the avatar menu — but this menu item only 
 - Background health checks run every 30 seconds and update the dots in real time.
 
 **Metadata tab (working)**
-- Shows every registered metadata provider as an enriched card.
-- Each card displays: status dot (green/red/grey), display name, domain badge (Ebook/Audiobook/Universal), zero-key badge, reachability chip, enable/disable toggle, capability tags ("Expert in: ..."), default trust weight percentage, and a breakdown of per-field trust weights.
-- Toggle a provider on or off. Changes take effect immediately.
+- Providers are grouped into collapsible categories by media type: Ebooks, Audiobooks, Movies, Universal.
+- Each provider appears as an enriched card showing: status badge (Reachable/Unreachable/Disabled), display name, domain chip, zero-key badge, capability icons, trust score bar, per-field trust weights (expandable), and enable/disable toggle.
+- Administrators can toggle providers, edit them, or remove them. Curators see a read-only view.
+- An "Add Source" wizard (three-step drawer) collects registration details for future custom provider support.
+- See `METADATA-MANAGEMENT.md` for full details.
 
 **Connectivity tab (placeholder)**
 - "Feature in Development" message. Reserved for future network/sync settings.
@@ -84,7 +86,7 @@ The user opens Server Settings from the avatar menu — but this menu item only 
 |---|------|----------------|
 | BR-01 | Only Administrator and Curator roles can see the "Server Settings" menu item. | Dashboard (MainLayout avatar menu) |
 | BR-02 | Within Server Settings, admin-only tabs (Libraries, Connectivity, API Keys, Users, Maintenance) are hidden from non-admin roles. | Dashboard (SettingsTabBar role filter) |
-| BR-03 | The Metadata tab is visible to all roles that can access Server Settings. | Dashboard (SettingsTabBar: AdminOnly = false) |
+| BR-03 | The Metadata tab is visible only to Administrators and Curators (AdminOnly = true). | Dashboard (SettingsTabBar: AdminOnly = true) |
 | BR-04 | The seed Owner profile (ID `00000000-...01`) cannot be deleted. | Engine (ProfileService business rule) |
 | BR-05 | The last remaining Administrator profile cannot be deleted. | Engine (ProfileService business rule) |
 | BR-06 | API key plaintext is shown exactly once at creation time; after that only the label and creation date are retrievable. | Engine (AdminEndpoints) |
