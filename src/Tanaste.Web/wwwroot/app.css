@@ -1,18 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Tanaste — Global Stylesheet
+   Tanaste — Global Stylesheet (Spatial Bento Design)
    Component-level styles live in their respective .razor files.
    This file owns only global / body-level rules.
    ══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Dark noise-textured background ─────────────────────────────────────── */
-/*
-   SVG feTurbulence generates a fractalNoise grain tile.  The rect inside the SVG
-   is rendered at 10 % opacity so the overall visual is a subtle film-grain over
-   the #0F0F14 deep-dark base — matching the "10 % noise" spec in the UI ASD.
-
-   200 × 200 px tiles repeat seamlessly (stitchTiles="stitch" in the filter).
-   Data-URI keeps this dependency-free; no extra network request.
-*/
 body {
     margin:             0;
     background-color:   #0F0F14;
@@ -21,12 +13,16 @@ body {
     background-size:    200px 200px;
 }
 
+/* ── Spatial AppBar — transparent glassmorphic header ────────────────────── */
+.spatial-appbar {
+    background: rgba(255, 255, 255, 0.03) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: none !important;
+}
+
 /* ── Automotive Mode tile ────────────────────────────────────────────────── */
-/*
-   Applied to BentoItem when AutomotiveModeService.IsActive == true.
-   Goals: 80px minimum tap target, high-contrast white text, enlarged everything.
-   Designed for use at a distance — TV, tablet mount, vehicle display.
-*/
 .automotive-tile {
     min-height:      80px !important;
     cursor:          pointer;
@@ -51,25 +47,24 @@ body {
 }
 
 /* ── Logo colour theming ─────────────────────────────────────────────────── */
-/*
-   SVG logos use prefers-color-scheme internally (black/white) which handles
-   the browser favicon and GitHub README rendering correctly.
-
-   Inside the Dashboard, the theme is controlled by the Blazor app — not by
-   the OS preference.  We override the SVG's own fill with a CSS filter so the
-   logo always matches the active Dashboard theme:
-
-     brightness(0)           → collapses every pixel to black
-     brightness(0) invert(1) → black → white
-
-   The 'tanaste-dark' class is toggled on <body> by setThemeClass() in
-   tanaste.js whenever the Dashboard theme changes.
-*/
 .tanaste-logo {
     filter: brightness(0);          /* light mode: force black */
 }
 .tanaste-dark .tanaste-logo {
     filter: brightness(0) invert(1);/* dark mode:  force white */
+}
+
+/* ── Glassmorphic MudToggleGroup overrides ──────────────────────────────── */
+.mud-toggle-group {
+    border-radius: 20px !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.mud-toggle-item {
+    border-radius: 16px !important;
+    font-size: 0.8rem !important;
+    text-transform: none !important;
 }
 
 /* ── Blazor error boundary ───────────────────────────────────────────────── */

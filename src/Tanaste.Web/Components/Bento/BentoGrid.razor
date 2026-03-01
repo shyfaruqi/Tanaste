@@ -18,14 +18,15 @@
     .bento-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 16px;
+        gap: 20px;
         width: 100%;
+        padding-bottom: 100px;   /* clearance for the floating Intent Dock */
     }
 
-    /* Desktop: force 4-column layout */
+    /* Desktop: force 3-column layout (tiles are wider in Spatial Bento) */
     @@media (min-width: 960px) {
         .bento-grid {
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(3, 1fr);
         }
     }
 

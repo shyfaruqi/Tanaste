@@ -1,55 +1,167 @@
 @namespace Tanaste.Web.Components.Universe
 
-@* "Last Journey" smart tile (Section 2.2 of the UI ASD).
-   Displays the most-recently active hub as a hero card with glassmorphic styling. *@
+@* "Last Journey" Smart Tile — Spatial Bento hero card.
+   Two-column layout: artwork (left) + title, subtitle, and three progress indicators (right).
+   Progress bars show placeholder values until a UserState API is available. *@
 
 @if (Hub is not null)
 {
-    <MudCard Class="hub-hero mud-elevation-4 mb-4" Style="position: relative; overflow: hidden;">
+    <div class="hub-hero" style="@HeroGlowStyle">
         <div class="hero-glass-overlay" />
 
-        <MudCardContent Class="pa-6" Style="position: relative; z-index: 1;">
-            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Class="mb-3">
-                Last Journey
-            </MudChip>
+        <div class="hero-inner">
+            @* ── Left column: artwork ── *@
+            <div class="hero-artwork">
+                <div class="hero-artwork-placeholder"
+                     style="background: linear-gradient(145deg, @(Hub.DominantHexColor)44, @(Hub.DominantHexColor)11);">
+                    <MudIcon Icon="@Icons.Material.Filled.Movie"
+                             Style="font-size: 64px; color: rgba(255,255,255,0.20);" />
+                </div>
+            </div>
 
-            <MudText Typo="Typo.h4" Class="mb-1">@Hub.DisplayName</MudText>
+            @* ── Right column: info + progress ── *@
+            <div class="hero-info">
+                <MudText Typo="Typo.h4" Class="mb-1" Style="font-weight: 600;">
+                    @Hub.DisplayName: Last Journey
+                </MudText>
+                <MudText Typo="Typo.body1" Style="color: rgba(255,255,255,0.70);" Class="mb-1">
+                    Continue your Journey in @Hub.DisplayName
+                </MudText>
+                <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.45);" Class="mb-4">
+                    @Hub.MediaTypes — @Hub.WorkCount @(Hub.WorkCount == 1 ? "work" : "works")
+                </MudText>
 
-            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
-                @Hub.MediaTypes — @Hub.WorkCount @(Hub.WorkCount == 1 ? "work" : "works")
-            </MudText>
+                @* ── Three progress indicators ── *@
+                <MudStack Row="true" Spacing="3" Class="hero-progress-row">
+                    <ProgressIndicator Icon="@Icons.Material.Filled.PlayCircle"
+                                       Value="@WatchValue"
+                                       Percent="@WatchPercent"
+                                       Label="@WatchLabel" />
 
-            <MudStack Row="true" Spacing="2">
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.PlayArrow">
-                    Resume
-                </MudButton>
-                <MudButton Variant="Variant.Outlined"
-                           Color="Color.Secondary"
-                           StartIcon="@Icons.Material.Filled.Info">
-                    Details
-                </MudButton>
-            </MudStack>
-        </MudCardContent>
-    </MudCard>
+                    <ProgressIndicator Icon="@Icons.Material.Filled.MenuBook"
+                                       Value="@ReadValue"
+                                       Percent="@ReadPercent"
+                                       Label="@ReadLabel" />
+
+                    <ProgressIndicator Icon="@Icons.Material.Filled.Headphones"
+                                       Value="@ListenValue"
+                                       Percent="@ListenPercent"
+                                       Label="@ListenLabel" />
+                </MudStack>
+            </div>
+        </div>
+    </div>
 }
 
 @code {
-    [Parameter] public HubViewModel? Hub   { get; set; }
+    [Parameter] public HubViewModel? Hub { get; set; }
+
+    // ── Progress data (placeholder until UserState API exists) ────────────────
+
+    private string WatchValue   => HasVideo  ? "—"  : "—";
+    private double WatchPercent => 0;
+    private string WatchLabel   => HasVideo  ? "Watch" : "No video";
+
+    private string ReadValue    => HasBook   ? "—"  : "—";
+    private double ReadPercent  => 0;
+    private string ReadLabel    => HasBook   ? "Read"  : "No book";
+
+    private string ListenValue  => HasAudio  ? "—"  : "—";
+    private double ListenPercent => 0;
+    private string ListenLabel  => HasAudio  ? "Listen" : "No audio";
+
+    // ── Media type presence helpers ──────────────────────────────────────────
+
+    private bool HasVideo => Hub?.Works.Any(w =>
+        w.MediaType.Contains("video", StringComparison.OrdinalIgnoreCase) ||
+        w.MediaType.Contains("movie", StringComparison.OrdinalIgnoreCase)) ?? false;
+
+    private bool HasBook => Hub?.Works.Any(w =>
+        w.MediaType.Contains("epub", StringComparison.OrdinalIgnoreCase) ||
+        w.MediaType.Contains("book", StringComparison.OrdinalIgnoreCase)) ?? false;
+
+    private bool HasAudio => Hub?.Works.Any(w =>
+        w.MediaType.Contains("audio", StringComparison.OrdinalIgnoreCase)) ?? false;
+
+    // ── Dynamic glow from hub accent colour ─────────────────────────────────
+
+    private string HeroGlowStyle =>
+        $"--hero-glow: {Hub?.DominantHexColor ?? "#7C4DFF"}33; " +
+        $"--hero-border: {Hub?.DominantHexColor ?? "#7C4DFF"}40;";
 }
 
 <style>
     .hub-hero {
-        background: linear-gradient(135deg, rgba(124, 77, 255, 0.20) 0%, rgba(0, 191, 165, 0.10) 100%);
-        border: 1px solid rgba(124, 77, 255, 0.30);
-        min-height: 200px;
+        position: relative;
+        overflow: hidden;
+        border-radius: 32px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--hero-border, rgba(124, 77, 255, 0.25));
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        box-shadow:
+            0 8px 40px rgba(0, 0, 0, 0.40),
+            0 0 80px var(--hero-glow, rgba(124, 77, 255, 0.20));
+        margin-bottom: 2rem;
     }
 
     .hero-glass-overlay {
         position: absolute;
         inset: 0;
-        background: radial-gradient(ellipse at top left, rgba(124,77,255,0.15), transparent 70%);
+        background: radial-gradient(ellipse at 80% 20%, var(--hero-glow, rgba(124, 77, 255, 0.15)), transparent 70%);
         pointer-events: none;
+    }
+
+    .hero-inner {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        gap: 2rem;
+        padding: 1.5rem 2rem;
+        align-items: center;
+    }
+
+    .hero-artwork {
+        flex-shrink: 0;
+        width: 180px;
+        height: 240px;
+    }
+
+    .hero-artwork-placeholder {
+        width: 100%;
+        height: 100%;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .hero-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .hero-progress-row {
+        flex-wrap: wrap;
+    }
+
+    /* Responsive: stack vertically on small screens */
+    @@media (max-width: 768px) {
+        .hero-inner {
+            flex-direction: column;
+            text-align: center;
+            padding: 1.25rem;
+        }
+
+        .hero-artwork {
+            width: 140px;
+            height: 190px;
+        }
+
+        .hero-progress-row {
+            justify-content: center;
+        }
     }
 </style>

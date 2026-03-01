@@ -12,15 +12,22 @@
 <CommandPalette @ref="_palette" />
 
 <MudLayout>
-    <MudAppBar Elevation="2">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu"
-                       Color="Color.Inherit"
-                       Edge="Edge.Start"
-                       OnClick="@ToggleDrawer"
-                       title="Toggle navigation" />
+    @* ── Header: avatar | centered title | search + theme toggle ── *@
+    <MudAppBar Elevation="0" Class="spatial-appbar">
+        <MudAvatar Size="Size.Small" Class="mr-3" Style="background: rgba(255,255,255,0.10);">
+            <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+        </MudAvatar>
 
-        <MudLink Href="/" Underline="Underline.None" Class="ml-2 d-flex align-center">
-            <img src="images/tanaste-logo.svg" alt="Tanaste" class="tanaste-logo" style="height: 34px; display: block;" />
+        <MudSpacer />
+
+        <MudLink Href="/" Underline="Underline.None" Class="d-flex align-center"
+                 Style="text-decoration: none;">
+            <img src="images/tanaste-icon.svg" alt="Tanaste" class="tanaste-logo"
+                 style="height: 28px; display: block; margin-right: 10px;" />
+            <MudText Typo="Typo.h5"
+                     Style="font-family: 'Georgia', 'Times New Roman', serif; font-weight: 400; letter-spacing: 0.04em;">
+                Last Journey
+            </MudText>
         </MudLink>
 
         <MudSpacer />
@@ -39,24 +46,19 @@
                        title="@(_isDark ? "Switch to Light Mode" : "Switch to Dark Mode")" />
     </MudAppBar>
 
-    <MudDrawer Open="_drawerOpen"
-               OpenChanged="@((v) => _drawerOpen = v)"
-               Elevation="1"
-               ClipMode="DrawerClipMode.Always"
-               Variant="DrawerVariant.Persistent">
-        <NavMenu />
-    </MudDrawer>
-
+    @* Full-width main content — no sidebar *@
     <MudMainContent Class="pt-16 pa-4">
         <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
             @Body
         </MudContainer>
     </MudMainContent>
+
+    @* Floating Intent Dock — fixed at bottom centre *@
+    <IntentDock />
 </MudLayout>
 
 @code {
-    private bool _isDark     = true;
-    private bool _drawerOpen = true;
+    private bool _isDark = true;
 
     private CommandPalette? _palette;
 
@@ -79,8 +81,6 @@
 
     [JSInvokable]
     public void OpenPalette() => _palette?.Open();
-
-    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 
     private async Task ToggleTheme()
     {

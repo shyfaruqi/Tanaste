@@ -2,91 +2,74 @@
 @inject AutomotiveModeService AutomotiveMode
 @implements IDisposable
 
-@* Asymmetric Bento grid of Hub cards (Section 2.2 of the UI ASD).
-   The first (newest) Hub is the hero tile at 2×2; all others are 1×1.
-   Each BentoItem glows with its Hub's brand colour.
-   In Automotive Mode only Audio hubs are shown; each tile gets oversized touch targets. *@
+@* "Your Universes" Bento grid — Spatial Bento design.
+   All tiles are 1×1 (hero is handled separately by HubHero).
+   Each tile shows: title, work count, and media-type icons row. *@
 
 @if (VisibleHubs is { Count: > 0 })
 {
-    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
-        <MudText Typo="Typo.h5">@(AutomotiveMode.IsActive ? "Audio Library" : "All Hubs")</MudText>
-        @if (AutomotiveMode.IsActive)
-        {
-            <MudChip T="string" Color="Color.Error" Size="Size.Small"
-                     Icon="@Icons.Material.Filled.DirectionsCar">
-                Automotive
-            </MudChip>
-        }
-    </MudStack>
+    <MudText Typo="Typo.h5" Class="mb-4" Style="font-weight: 600;">
+        Your Universes
+    </MudText>
 
     <BentoGrid Class="@Class">
-        @foreach (var (hub, index) in VisibleHubs.Select((h, i) => (h, i)))
+        @foreach (var hub in VisibleHubs)
         {
-            var isHero      = index == 0 && !AutomotiveMode.IsActive;
-            var extraClass  = AutomotiveMode.IsActive ? "automotive-tile" : string.Empty;
+            var extraClass = AutomotiveMode.IsActive ? "automotive-tile" : string.Empty;
 
-            <BentoItem ColSpan="@(isHero ? 2 : 1)"
-                       RowSpan="@(isHero ? 2 : 1)"
+            <BentoItem ColSpan="1" RowSpan="1"
                        GlowColor="@hub.DominantHexColor"
                        Class="@extraClass">
 
                 <div class="bento-hub-content" @onclick="() => OnHubSelected.InvokeAsync(hub)">
 
-                    @* ── Type badge row ── *@
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
-                        <MudIcon Icon="@GetMediaIcon(hub.MediaTypes)"
-                                 Style="@($"color: {hub.DominantHexColor}; font-size: {(AutomotiveMode.IsActive ? "24px" : "16px")};")" />
-                        <MudText Typo="Typo.overline"
-                                 Style="@($"color: {hub.DominantHexColor}; letter-spacing: 0.1em;")">
-                            @hub.MediaTypes
-                        </MudText>
-                    </MudStack>
-
                     @* ── Title ── *@
-                    <MudText Typo="@(isHero ? Typo.h5 : (AutomotiveMode.IsActive ? Typo.h5 : Typo.h6))"
-                             Class="mb-1">
+                    <MudText Typo="Typo.h5" Class="mb-1" Style="font-weight: 600;">
                         @hub.DisplayName
                     </MudText>
 
                     @* ── Work count ── *@
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.50);">
                         @hub.WorkCount @(hub.WorkCount == 1 ? "work" : "works")
                     </MudText>
 
-                    @* ── Date — pushed to bottom *@
-                    @if (!AutomotiveMode.IsActive)
-                    {
-                        <MudText Typo="Typo.caption" Color="Color.Tertiary" Class="mt-auto pt-3">
-                            Added @hub.CreatedAt.LocalDateTime.ToString("MMM d, yyyy")
-                        </MudText>
-                    }
+                    @* ── Media type icons row — pushed to bottom ── *@
+                    <MudStack Row="true" Spacing="2" Class="mt-auto pt-3"
+                              AlignItems="AlignItems.Center">
+                        @foreach (var icon in GetDistinctMediaIcons(hub))
+                        {
+                            <MudIcon Icon="@icon" Size="Size.Small"
+                                     Style="color: rgba(255,255,255,0.35); font-size: 22px;" />
+                        }
+                    </MudStack>
 
                 </div>
             </BentoItem>
         }
     </BentoGrid>
 }
-else if (AutomotiveMode.IsActive && Hubs is { Count: > 0 })
+else if (VisibleHubs is { Count: 0 } && Hubs is { Count: > 0 })
 {
-    @* Automotive Mode is on but no audio hubs exist yet *@
-    <MudPaper Class="pa-8 d-flex flex-column align-center" Elevation="0" Outlined="true">
-        <MudIcon Icon="@Icons.Material.Filled.Headphones"
+    @* Filter active (e.g. Automotive Mode) but no matching hubs *@
+    <MudPaper Class="pa-8 d-flex flex-column align-center" Elevation="0"
+              Style="background: rgba(255,255,255,0.03); border-radius: 32px; border: 1px solid rgba(255,255,255,0.06);">
+        <MudIcon Icon="@Icons.Material.Filled.FilterAlt"
                  Size="Size.Large" Color="Color.Secondary" Class="mb-3" />
-        <MudText Typo="Typo.h6" Class="mb-2">No Audio Hubs</MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">
-            Automotive Mode shows audio content only. Add audiobooks or music to your library.
+        <MudText Typo="Typo.h6" Class="mb-2">No matching Hubs</MudText>
+        <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.50);">
+            Try a different intent filter from the dock below.
         </MudText>
     </MudPaper>
 }
 else
 {
-    <MudPaper Class="pa-8 d-flex flex-column align-center" Elevation="0" Outlined="true">
+    <MudPaper Class="pa-8 d-flex flex-column align-center" Elevation="0"
+              Style="background: rgba(255,255,255,0.03); border-radius: 32px; border: 1px solid rgba(255,255,255,0.06);">
         <MudIcon Icon="@Icons.Material.Filled.LibraryAdd"
                  Size="Size.Large" Color="Color.Secondary" Class="mb-3" />
         <MudText Typo="Typo.h6" Class="mb-2">Your library is empty</MudText>
-        <MudText Typo="Typo.body2" Color="Color.Secondary">
-            Configure a watch directory and run a scan to populate your library.
+        <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.50);">
+            Configure a watch directory and drop files in to get started.
         </MudText>
     </MudPaper>
 }
@@ -115,21 +98,36 @@ else
     public void Dispose() =>
         AutomotiveMode.OnChanged -= OnAutomotiveChanged;
 
-    private static string GetMediaIcon(string mediaTypes) => mediaTypes.ToLowerInvariant() switch
+    /// <summary>
+    /// Returns distinct media-type icons for a hub (video, book, audio, comic).
+    /// Each icon appears at most once regardless of how many Works share that type.
+    /// </summary>
+    private static List<string> GetDistinctMediaIcons(HubViewModel hub)
     {
-        var t when t.Contains("epub")  => Icons.Material.Filled.MenuBook,
-        var t when t.Contains("video") => Icons.Material.Filled.VideoFile,
-        var t when t.Contains("comic") => Icons.Material.Filled.AutoStories,
-        var t when t.Contains("audio") => Icons.Material.Filled.Headphones,
-        _                              => Icons.Material.Filled.Folder,
-    };
+        var icons = new List<string>();
+        var types = hub.Works.Select(w => w.MediaType.ToLowerInvariant()).Distinct().ToList();
+
+        if (types.Any(t => t.Contains("video") || t.Contains("movie")))
+            icons.Add(Icons.Material.Filled.PlayCircle);
+        if (types.Any(t => t.Contains("epub") || t.Contains("book")))
+            icons.Add(Icons.Material.Filled.MenuBook);
+        if (types.Any(t => t.Contains("audio")))
+            icons.Add(Icons.Material.Filled.Headphones);
+        if (types.Any(t => t.Contains("comic") || t.Contains("cbz") || t.Contains("cbr")))
+            icons.Add(Icons.Material.Filled.AutoStories);
+
+        if (icons.Count == 0)
+            icons.Add(Icons.Material.Filled.Folder);
+
+        return icons;
+    }
 }
 
 <style>
     .bento-hub-content {
         height:          100%;
         min-height:      inherit;
-        padding:         1.25rem 1.5rem;
+        padding:         1.5rem 1.75rem;
         display:         flex;
         flex-direction:  column;
         cursor:          pointer;

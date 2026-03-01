@@ -62,9 +62,8 @@ public sealed class ThemeService
     {
         LayoutProperties = new LayoutProperties
         {
-            // 24 px border radius required by Section 3 of the UI ASD.
-            DefaultBorderRadius = "24px",
-            DrawerWidthLeft     = "260px",
+            // 32 px border radius for glassmorphic Spatial Bento design.
+            DefaultBorderRadius = "32px",
         },
 
         PaletteDark = new PaletteDark

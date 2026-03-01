@@ -53,10 +53,16 @@ Everything runs on your own machine. No account. No subscription. No data sent a
 
 ## ✨ Key Features
 
-### 📊 The Bento Dashboard
-The Bento Dashboard is the physical **Presentation layer** — the visible surface of everything the Intelligence Engine has already silently understood about your library. It requires no manual curation: the layout reflects what is actually in your collection, and updates the moment something changes.
+### 📊 The Spatial Bento Dashboard
+The Dashboard is built around a **Universe-First** navigation philosophy. Instead of browsing files by type (books in one folder, movies in another), you browse by *story* — each Hub is a Universe that holds every version of that story in your collection.
 
-The grid uses an asymmetric **Bento layout** — wider tiles for your most recently visited Hubs, narrower tiles for the rest — so the shape of the interface naturally mirrors how you actually use your library. Each card uses **glassmorphic styling** (a translucent glass effect with soft depth and colour glows) drawn from the dominant colour of the Hub's media. A global **Command Palette** (activated with `Ctrl+K`) lets you navigate the entire library by name without touching the mouse.
+**The "Last Journey" Hero Tile** — the most recently accessed Hub is displayed as a large, two-column hero card at the top of the page. It shows the Hub's artwork, title, and three progress indicators (Watch %, Read Page, Listen Time) so you can resume exactly where you left off. Click any other Hub tile to promote it to the hero position.
+
+**The Floating Intent Dock** — a glassmorphic bar fixed at the bottom of the screen with four intent-based filters: **Hubs** (all), **Watch** (video), **Read** (books/comics), and **Listen** (audio). This replaces the traditional sidebar — navigation by media intent, not by page.
+
+**The Command Palette** (`Ctrl+K`) — the primary deep-navigation tool. Search across all Hubs, Works, and system pages from anywhere in the Dashboard without leaving the current view.
+
+All cards and panels use **glassmorphic styling** with 32px corner radii, `backdrop-filter: blur(20px)`, and colour-matched glow shadows drawn from each Hub's dominant media colour. A global **Command Palette** (activated with `Ctrl+K`) lets you navigate the entire library by name without touching the mouse.
 
 > *Live updates are pushed directly to your browser via the Intercom channel the moment a new file is detected — no page refresh, no manual sync. The Dashboard is always a real-time reflection of what the Engine knows.*
 
@@ -297,6 +303,7 @@ External apps can query Hubs, trigger library scans, and resolve metadata confli
 | **Library Organization & Sidecar System** | Hub-first folder structure (`{Category}/{Hub} ({Year})/{Format} - {Edition}`); tanaste.xml sidecars at Hub and Edition level; confidence gate on AutoOrganize (≥0.85 or user-locked); Great Inhale (`POST /ingestion/library-scan`) to rebuild DB from XML |
 | **UI Deliverable 1** | Dashboard shell — MudBlazor layout, dark mode, Bento Grid, Hub cards, Command Palette |
 | **UI Deliverable 2** | State & real-time — UniverseViewModel, UniverseMapper, SignalR Intercom listener |
+| **Spatial Bento Redesign** | Universe-First navigation: removed sidebar in favour of floating Intent Dock (Hubs/Watch/Read/Listen) and Command Palette (Ctrl+K); Last Journey hero tile with artwork + progress bars; glassmorphic 32px-radius panels with blur(20px); asymmetric Bento grid with media-type icons |
 
 ### 🔄 In Progress / Planned
 

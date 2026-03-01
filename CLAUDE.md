@@ -534,15 +534,17 @@ src/Tanaste.Web/
 │
 ├── Components/
 │   ├── Universe/             ← Hub-related visual components
-│   │   ├── HubHero.razor               "Last Journey" hero card (most recently active Hub)
-│   │   └── UniverseStack.razor         Asymmetric bento grid of all Hub cards
+│   │   ├── HubHero.razor               "Last Journey" hero: artwork + progress indicators
+│   │   ├── ProgressIndicator.razor     Reusable progress card (icon + bar + label)
+│   │   └── UniverseStack.razor         "Your Universes" Bento grid (all 1×1 tiles)
 │   │
 │   ├── Bento/                ← The layout grid system (reusable)
-│   │   ├── BentoGrid.razor             CSS grid container
-│   │   └── BentoItem.razor             Single grid cell with configurable span
+│   │   ├── BentoGrid.razor             CSS grid container (3-col desktop, dock clearance)
+│   │   └── BentoItem.razor             Glassmorphic tile: 32px radius, blur(20px)
 │   │
 │   ├── Navigation/           ← Navigation and search components
-│   │   └── CommandPalette.razor        Ctrl+K global search and navigation
+│   │   ├── CommandPalette.razor        Ctrl+K global search and navigation
+│   │   └── IntentDock.razor            Floating bottom dock: Hubs / Watch / Read / Listen
 │   │
 │   └── Pages/                ← Full-page views (routed)
 │       ├── Home.razor                  Library overview page
@@ -557,8 +559,8 @@ src/Tanaste.Web/
 │       └── ScanResultViewModel.cs      Dry-run scan result (pending file operations)
 │
 └── Shared/                   ← Top-level layout shell (used by every page)
-    ├── MainLayout.razor                App chrome: AppBar, Drawer, dark-mode toggle
-    ├── NavMenu.razor                   Sidebar navigation links
+    ├── MainLayout.razor                App chrome: glassmorphic AppBar, Intent Dock, dark-mode toggle
+    ├── NavMenu.razor                   Deprecated stub (replaced by Intent Dock + Command Palette)
     └── _Imports.razor                  Namespace imports for all Shared components
 ```
 

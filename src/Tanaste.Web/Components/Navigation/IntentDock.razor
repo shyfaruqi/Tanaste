@@ -1,0 +1,105 @@
+@namespace Tanaste.Web.Components.Navigation
+
+@* Floating Intent Dock — fixed at the bottom centre of the viewport.
+   Four intent modes: Hubs (default), Watch, Read, Listen.
+   Uses glassmorphic styling consistent with the Spatial Bento design. *@
+
+<div class="intent-dock">
+    <MudPaper Elevation="0" Class="intent-dock-surface">
+        <MudStack Row="true" Spacing="4" AlignItems="AlignItems.Center"
+                  Justify="Justify.Center" Class="pa-2 px-6">
+
+            <MudTooltip Text="Hubs" Arrow="true" Placement="Placement.Top">
+                <MudIconButton Icon="@Icons.Material.Filled.Hub"
+                               Size="Size.Medium"
+                               Color="@(ActiveIntent == DockIntent.Hubs ? Color.Primary : Color.Default)"
+                               Style="@DockButtonStyle(DockIntent.Hubs)"
+                               OnClick="@(() => SetIntent(DockIntent.Hubs))"
+                               title="Hubs" />
+            </MudTooltip>
+
+            <MudTooltip Text="Watch" Arrow="true" Placement="Placement.Top">
+                <MudIconButton Icon="@Icons.Material.Filled.PlayCircle"
+                               Size="Size.Medium"
+                               Color="@(ActiveIntent == DockIntent.Watch ? Color.Primary : Color.Default)"
+                               Style="@DockButtonStyle(DockIntent.Watch)"
+                               OnClick="@(() => SetIntent(DockIntent.Watch))"
+                               title="Watch" />
+            </MudTooltip>
+
+            <MudTooltip Text="Read" Arrow="true" Placement="Placement.Top">
+                <MudIconButton Icon="@Icons.Material.Filled.MenuBook"
+                               Size="Size.Medium"
+                               Color="@(ActiveIntent == DockIntent.Read ? Color.Primary : Color.Default)"
+                               Style="@DockButtonStyle(DockIntent.Read)"
+                               OnClick="@(() => SetIntent(DockIntent.Read))"
+                               title="Read" />
+            </MudTooltip>
+
+            <MudTooltip Text="Listen" Arrow="true" Placement="Placement.Top">
+                <MudIconButton Icon="@Icons.Material.Filled.Headphones"
+                               Size="Size.Medium"
+                               Color="@(ActiveIntent == DockIntent.Listen ? Color.Primary : Color.Default)"
+                               Style="@DockButtonStyle(DockIntent.Listen)"
+                               OnClick="@(() => SetIntent(DockIntent.Listen))"
+                               title="Listen" />
+            </MudTooltip>
+
+        </MudStack>
+
+        @* Active intent label *@
+        <div class="intent-dock-label">
+            <MudText Typo="Typo.caption"
+                     Style="color: rgba(255,255,255,0.50); text-align: center; padding-bottom: 6px;">
+                @ActiveIntent.ToString()
+            </MudText>
+        </div>
+    </MudPaper>
+</div>
+
+@code {
+    /// <summary>The currently active intent filter.</summary>
+    [Parameter] public DockIntent ActiveIntent { get; set; } = DockIntent.Hubs;
+
+    /// <summary>Fires when the user selects a different intent.</summary>
+    [Parameter] public EventCallback<DockIntent> OnIntentChanged { get; set; }
+
+    private async Task SetIntent(DockIntent intent)
+    {
+        ActiveIntent = intent;
+        await OnIntentChanged.InvokeAsync(intent);
+    }
+
+    private string DockButtonStyle(DockIntent intent) =>
+        ActiveIntent == intent
+            ? "background: rgba(124, 77, 255, 0.18); border-radius: 16px;"
+            : "border-radius: 16px;";
+
+    public enum DockIntent { Hubs, Watch, Read, Listen }
+}
+
+<style>
+    .intent-dock {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1200;
+        pointer-events: auto;
+    }
+
+    .intent-dock-surface {
+        background: rgba(255, 255, 255, 0.05) !important;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 28px !important;
+        box-shadow:
+            0 8px 32px rgba(0, 0, 0, 0.50),
+            0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+    }
+
+    .intent-dock-label {
+        margin-top: -4px;
+    }
+</style>
