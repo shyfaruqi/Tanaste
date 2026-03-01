@@ -69,6 +69,9 @@ public sealed class IngestionEngine : BackgroundService, IIngestionEngine
     // Phase 7: sidecar XML writer.
     private readonly ISidecarWriter _sidecar;
 
+    // Hub → Work → Edition scaffold creation.
+    private readonly IMediaEntityChainFactory _chainFactory;
+
     public IngestionEngine(
         IFileWatcher              watcher,
         DebounceQueue             debounce,
@@ -86,7 +89,8 @@ public sealed class IngestionEngine : BackgroundService, IIngestionEngine
         ICanonicalValueRepository  canonicalRepo,
         IMetadataHarvestingService harvesting,
         IRecursiveIdentityService  identity,
-        ISidecarWriter             sidecar)
+        ISidecarWriter             sidecar,
+        IMediaEntityChainFactory   chainFactory)
     {
         _watcher       = watcher;
         _debounce      = debounce;
@@ -105,6 +109,7 @@ public sealed class IngestionEngine : BackgroundService, IIngestionEngine
         _harvesting    = harvesting;
         _identity      = identity;
         _sidecar       = sidecar;
+        _chainFactory  = chainFactory;
     }
 
     // =========================================================================
@@ -328,10 +333,19 @@ public sealed class IngestionEngine : BackgroundService, IIngestionEngine
         candidate.Metadata          = BuildMetadataDict(scored);
         candidate.DetectedMediaType = result.DetectedType;
 
+        // Step 9b: create Hub → Work → Edition chain so the FK on media_assets
+        // can be satisfied.  The factory reuses an existing Hub when a matching
+        // display name is found; otherwise it creates a fresh chain.
+        var editionId = await _chainFactory.EnsureEntityChainAsync(
+            result.DetectedType,
+            candidate.Metadata,
+            ct).ConfigureAwait(false);
+
         // Step 10: insert asset.
         var asset = new MediaAsset
         {
             Id           = assetId,
+            EditionId    = editionId,
             ContentHash  = hash.Hex,
             FilePathRoot = candidate.Path,
             Status       = AssetStatus.Normal,

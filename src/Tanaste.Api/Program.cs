@@ -176,6 +176,7 @@ builder.Services.AddHttpClient("wikidata_sparql", c =>
 builder.Services.AddSingleton<IMetadataClaimRepository,  MetadataClaimRepository>();
 builder.Services.AddSingleton<ICanonicalValueRepository, CanonicalValueRepository>();
 builder.Services.AddSingleton<IPersonRepository,         PersonRepository>();
+builder.Services.AddSingleton<IMediaEntityChainFactory,  MediaEntityChainFactory>();
 
 // Provider adapters — each registered as IExternalMetadataProvider so
 // MetadataHarvestingService receives them as IEnumerable<IExternalMetadataProvider>.

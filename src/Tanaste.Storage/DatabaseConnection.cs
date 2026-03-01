@@ -143,6 +143,47 @@ public sealed class DatabaseConnection : IDatabaseConnection
             table:  "hubs",
             column: "display_name",
             ddl:    "ALTER TABLE hubs ADD COLUMN display_name TEXT;");
+
+        // Seed S-001: provider_registry entries for all known providers.
+        // metadata_claims.provider_id has a FK to provider_registry(id), so these
+        // rows MUST exist before any claim is written.  INSERT OR IGNORE makes this
+        // idempotent — safe to run on every startup.
+        SeedProviderRegistry(conn);
+    }
+
+    /// <summary>
+    /// Seeds the <c>provider_registry</c> table with all known provider GUIDs.
+    /// Uses <c>INSERT OR IGNORE</c> so duplicate rows are silently skipped.
+    /// </summary>
+    private static void SeedProviderRegistry(SqliteConnection conn)
+    {
+        ReadOnlySpan<(string Id, string Name, string Version)> providers =
+        [
+            ("a1b2c3d4-e5f6-4700-8900-0a1b2c3d4e5f", "local_processor",      "1.0"),
+            ("c9d8e7f6-a5b4-4321-fedc-0102030405c9",  "library_scanner",      "1.0"),
+            ("b1000001-e000-4000-8000-000000000001",   "apple_books_ebook",    "1.0"),
+            ("b1000001-a000-4000-8000-000000000002",   "apple_books_audiobook","1.0"),
+            ("b2000002-a000-4000-8000-000000000003",   "audnexus",            "1.0"),
+            ("b3000003-w000-4000-8000-000000000004",   "wikidata",            "1.0"),
+        ];
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            INSERT OR IGNORE INTO provider_registry (id, name, version, is_enabled)
+            VALUES (@id, @name, @version, 1);
+            """;
+
+        var pId      = cmd.Parameters.Add("@id",      Microsoft.Data.Sqlite.SqliteType.Text);
+        var pName    = cmd.Parameters.Add("@name",    Microsoft.Data.Sqlite.SqliteType.Text);
+        var pVersion = cmd.Parameters.Add("@version", Microsoft.Data.Sqlite.SqliteType.Text);
+
+        foreach (var (id, name, version) in providers)
+        {
+            pId.Value      = id;
+            pName.Value    = name;
+            pVersion.Value = version;
+            cmd.ExecuteNonQuery();
+        }
     }
 
     // -------------------------------------------------------------------------
