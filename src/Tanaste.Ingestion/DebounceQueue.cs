@@ -290,21 +290,30 @@ public sealed class DebounceQueue : IDisposable
     // -------------------------------------------------------------------------
 
     /// <summary>Writes a ready candidate to the output channel.</summary>
+    /// <remarks>
+    /// Uses <c>_shutdownCts.Token</c> for the channel write instead of the per-path
+    /// <paramref name="ct"/>, because <see cref="CleanupEntry"/> cancels the per-path
+    /// CTS (which owns <paramref name="ct"/>) — writing with an already-cancelled
+    /// token would silently drop every candidate.
+    /// </remarks>
     private async Task PromoteAsync(
         string key,
         IngestionCandidate candidate,
         CancellationToken ct)
     {
-        CleanupEntry(key);
-
         try
         {
-            // WriteAsync will yield if the channel is full, applying back-pressure
-            // until a consumer reads from Reader.
-            await _channel.Writer.WriteAsync(candidate, ct);
+            // Write FIRST, before cleaning up the timer that owns our token.
+            // CleanupEntry cancels + disposes the per-path CTS, so we must use
+            // the global shutdown token for the channel write.
+            await _channel.Writer.WriteAsync(candidate, _shutdownCts.Token);
         }
         catch (OperationCanceledException) { /* shutting down — drop silently */ }
         catch (ChannelClosedException)     { /* shutting down — drop silently */ }
+
+        // Clean up AFTER the write has completed so the per-path CTS is not
+        // cancelled while the write is in progress.
+        CleanupEntry(key);
     }
 
     private void CancelExistingTimer(string key)

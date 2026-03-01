@@ -104,6 +104,7 @@ public sealed class ThemeService
             BackgroundGray      = "#E8E8EE",
             Surface             = "#FFFFFF",
             AppbarBackground    = "#FFFFFF",
+            AppbarText          = "rgba(0,0,0,0.87)",
             DrawerBackground    = "#FFFFFF",
             DrawerText          = "rgba(0,0,0,0.75)",
             DrawerIcon          = "rgba(0,0,0,0.55)",
