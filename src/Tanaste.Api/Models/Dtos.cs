@@ -26,6 +26,9 @@ public sealed class ApiKeyDto
     [JsonPropertyName("label")]
     public string Label { get; init; } = string.Empty;
 
+    [JsonPropertyName("role")]
+    public string Role { get; init; } = "Administrator";
+
     [JsonPropertyName("created_at")]
     public DateTimeOffset CreatedAt { get; init; }
 
@@ -33,6 +36,7 @@ public sealed class ApiKeyDto
     {
         Id        = key.Id,
         Label     = key.Label,
+        Role      = key.Role,
         CreatedAt = key.CreatedAt,
     };
 }
@@ -41,6 +45,13 @@ public sealed class CreateApiKeyRequest
 {
     [JsonPropertyName("label")]
     public string Label { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Authorization role for this key.  Defaults to Administrator if omitted.
+    /// Valid values: Administrator, Curator, Consumer.
+    /// </summary>
+    [JsonPropertyName("role")]
+    public string? Role { get; init; }
 }
 
 public sealed class CreateApiKeyResponse
@@ -50,6 +61,9 @@ public sealed class CreateApiKeyResponse
 
     [JsonPropertyName("label")]
     public string Label { get; init; } = string.Empty;
+
+    [JsonPropertyName("role")]
+    public string Role { get; init; } = "Administrator";
 
     /// <summary>
     /// The API key plaintext. Shown exactly once — store it now; it cannot be retrieved again.
@@ -500,4 +514,22 @@ public sealed class RevokeAllKeysResponse
 {
     [JsonPropertyName("revoked_count")]
     public int RevokedCount { get; init; }
+}
+
+// ── GET/PUT /settings/organization-template ──────────────────────────────────
+
+public sealed class OrganizationTemplateResponse
+{
+    [JsonPropertyName("template")]
+    public string Template { get; init; } = string.Empty;
+
+    /// <summary>Sample resolved path using representative token values.</summary>
+    [JsonPropertyName("preview")]
+    public string? Preview { get; init; }
+}
+
+public sealed class UpdateOrganizationTemplateRequest
+{
+    [JsonPropertyName("template")]
+    public string Template { get; init; } = string.Empty;
 }

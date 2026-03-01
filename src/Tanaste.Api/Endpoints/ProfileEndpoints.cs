@@ -1,4 +1,5 @@
 using Tanaste.Api.Models;
+using Tanaste.Api.Security;
 using Tanaste.Domain.Aggregates;
 using Tanaste.Domain.Enums;
 using Tanaste.Identity.Contracts;
@@ -33,7 +34,8 @@ public static class ProfileEndpoints
         })
         .WithName("ListProfiles")
         .WithSummary("List all user profiles.")
-        .Produces<List<ProfileResponseDto>>(StatusCodes.Status200OK);
+        .Produces<List<ProfileResponseDto>>(StatusCodes.Status200OK)
+        .RequireAdmin();
 
         group.MapGet("/{id:guid}", async (
             Guid id,
@@ -48,7 +50,8 @@ public static class ProfileEndpoints
         .WithName("GetProfile")
         .WithSummary("Get a single profile by ID.")
         .Produces<ProfileResponseDto>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status404NotFound);
+        .Produces(StatusCodes.Status404NotFound)
+        .RequireAdmin();
 
         group.MapPost("/", async (
             CreateProfileRequest request,
@@ -70,7 +73,8 @@ public static class ProfileEndpoints
         .WithName("CreateProfile")
         .WithSummary("Create a new user profile.")
         .Produces<ProfileResponseDto>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status400BadRequest);
+        .Produces(StatusCodes.Status400BadRequest)
+        .RequireAdmin();
 
         group.MapMethods("/{id:guid}", ["PUT"], async (
             Guid id,
@@ -104,7 +108,8 @@ public static class ProfileEndpoints
         .WithSummary("Update an existing profile's display name, avatar color, and role.")
         .Produces<ProfileResponseDto>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest)
-        .Produces(StatusCodes.Status404NotFound);
+        .Produces(StatusCodes.Status404NotFound)
+        .RequireAdmin();
 
         group.MapDelete("/{id:guid}", async (
             Guid id,
@@ -120,7 +125,8 @@ public static class ProfileEndpoints
         .WithName("DeleteProfile")
         .WithSummary("Delete a profile. Cannot delete the seed Owner profile or the last Administrator.")
         .Produces(StatusCodes.Status204NoContent)
-        .Produces(StatusCodes.Status400BadRequest);
+        .Produces(StatusCodes.Status400BadRequest)
+        .RequireAdmin();
 
         return app;
     }

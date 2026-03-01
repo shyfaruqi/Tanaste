@@ -1,3 +1,4 @@
+using Tanaste.Api.Security;
 using Tanaste.Domain.Contracts;
 using Tanaste.Processors.Contracts;
 
@@ -77,7 +78,9 @@ public static class StreamEndpoints
         .WithSummary("Stream a media asset with HTTP 206 byte-range support.")
         .Produces(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status206PartialContent)
-        .Produces(StatusCodes.Status404NotFound);
+        .Produces(StatusCodes.Status404NotFound)
+        .RequireAnyRole()
+        .RequireRateLimiting("streaming");
 
         return app;
     }

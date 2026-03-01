@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Tanaste.Api.Models;
+using Tanaste.Api.Security;
 using Tanaste.Ingestion.Contracts;
 using Tanaste.Ingestion.Models;
 
@@ -41,7 +42,8 @@ public static class IngestionEndpoints
         .WithName("TriggerScan")
         .WithSummary("Simulate a library scan and return pending operations without mutating files.")
         .Produces<ScanResponse>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status400BadRequest);
+        .Produces(StatusCodes.Status400BadRequest)
+        .RequireAdmin();
 
         // ── POST /ingestion/library-scan ──────────────────────────────────────────
 
@@ -74,7 +76,8 @@ public static class IngestionEndpoints
             "Reads tanaste.xml sidecars in the Library Root and hydrates the database. " +
             "XML always wins on conflict (Great Inhale).")
         .Produces<LibraryScanResponse>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status400BadRequest);
+        .Produces(StatusCodes.Status400BadRequest)
+        .RequireAdmin();
 
         return app;
     }

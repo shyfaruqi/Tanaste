@@ -28,10 +28,17 @@ public sealed class ApiKeyService(IApiKeyRepository repo)
     /// The plaintext in the returned <c>PlaintextKey</c> MUST be shown to the user
     /// immediately and MUST NOT be stored anywhere else.
     /// </summary>
+    /// <summary>Valid API key roles.  Checked at generation time.</summary>
+    private static readonly string[] ValidRoles = ["Administrator", "Curator", "Consumer"];
+
     public async Task<(ApiKey Key, string PlaintextKey)> GenerateAsync(
-        string label, CancellationToken ct = default)
+        string label, string role = "Administrator", CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(label);
+
+        if (!ValidRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
+            throw new ArgumentException(
+                $"Invalid role '{role}'. Must be Administrator, Curator, or Consumer.");
 
         // 32 random bytes → URL-safe base-64 (no padding) — 43 characters.
         var rawBytes   = RandomNumberGenerator.GetBytes(32);
@@ -47,6 +54,7 @@ public sealed class ApiKeyService(IApiKeyRepository repo)
             Id         = Guid.NewGuid(),
             Label      = label,
             HashedKey  = hashedKey,
+            Role       = role,
             CreatedAt  = DateTimeOffset.UtcNow,
         };
 

@@ -32,12 +32,13 @@ public sealed class ApiKeyRepository : IApiKeyRepository
         var conn = _db.Open();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = """
-            INSERT INTO api_keys (id, label, hashed_key, created_at)
-            VALUES (@id, @label, @hashed_key, @created_at);
+            INSERT INTO api_keys (id, label, hashed_key, role, created_at)
+            VALUES (@id, @label, @hashed_key, @role, @created_at);
             """;
         cmd.Parameters.AddWithValue("@id",         key.Id.ToString());
         cmd.Parameters.AddWithValue("@label",      key.Label);
         cmd.Parameters.AddWithValue("@hashed_key", key.HashedKey);
+        cmd.Parameters.AddWithValue("@role",       key.Role);
         cmd.Parameters.AddWithValue("@created_at", key.CreatedAt.ToString("O"));
         cmd.ExecuteNonQuery();
 
@@ -53,7 +54,7 @@ public sealed class ApiKeyRepository : IApiKeyRepository
         var conn = _db.Open();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = """
-            SELECT id, label, hashed_key, created_at
+            SELECT id, label, hashed_key, role, created_at
             FROM   api_keys
             WHERE  hashed_key = @hashed_key
             LIMIT  1;
@@ -73,7 +74,7 @@ public sealed class ApiKeyRepository : IApiKeyRepository
         var conn = _db.Open();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = """
-            SELECT id, label, created_at
+            SELECT id, label, role, created_at
             FROM   api_keys
             ORDER  BY created_at DESC;
             """;
@@ -87,7 +88,8 @@ public sealed class ApiKeyRepository : IApiKeyRepository
                 Id         = Guid.Parse(reader.GetString(0)),
                 Label      = reader.GetString(1),
                 HashedKey  = string.Empty,  // intentionally omitted for listing
-                CreatedAt  = DateTimeOffset.Parse(reader.GetString(2)),
+                Role       = reader.GetString(2),
+                CreatedAt  = DateTimeOffset.Parse(reader.GetString(3)),
             });
         }
 
@@ -131,6 +133,7 @@ public sealed class ApiKeyRepository : IApiKeyRepository
         Id        = Guid.Parse(r.GetString(0)),
         Label     = r.GetString(1),
         HashedKey = r.GetString(2),
-        CreatedAt = DateTimeOffset.Parse(r.GetString(3)),
+        Role      = r.GetString(3),
+        CreatedAt = DateTimeOffset.Parse(r.GetString(4)),
     };
 }

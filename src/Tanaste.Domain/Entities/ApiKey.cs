@@ -24,6 +24,14 @@ public sealed class ApiKey
     /// </summary>
     public string HashedKey { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Authorization role for this key.  Determines which endpoints
+    /// the key can access.  One of: Administrator, Curator, Consumer.
+    /// Defaults to Administrator so that existing keys retain full access
+    /// after migration M-006.
+    /// </summary>
+    public string Role { get; set; } = "Administrator";
+
     /// <summary>When this key was issued.</summary>
     public DateTimeOffset CreatedAt { get; set; }
 }

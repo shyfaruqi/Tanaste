@@ -1,4 +1,5 @@
 using Tanaste.Api.Models;
+using Tanaste.Api.Security;
 using Tanaste.Domain.Contracts;
 using Tanaste.Domain.Events;
 using Tanaste.Ingestion.Contracts;
@@ -9,6 +10,11 @@ namespace Tanaste.Api.Endpoints;
 /// <summary>
 /// Settings endpoints for folder configuration, path testing, and provider status.
 /// All routes are grouped under <c>/settings</c>.
+///
+/// Access:
+///   Folders, test-path, organization-template — Administrator only.
+///   Providers (read) — Administrator or Curator.
+///   Providers (write) — Administrator only.
 ///
 /// <list type="bullet">
 ///   <item><c>GET    /settings/folders</c>   — current Watch Folder + Library Folder</item>
@@ -58,7 +64,8 @@ public static class SettingsEndpoints
         })
         .WithName("GetFolderSettings")
         .WithSummary("Returns the currently configured Watch Folder and Library Folder paths.")
-        .Produces<FolderSettingsResponse>(StatusCodes.Status200OK);
+        .Produces<FolderSettingsResponse>(StatusCodes.Status200OK)
+        .RequireAdmin();
 
         // ── PUT /settings/folders ──────────────────────────────────────────────
 
@@ -70,6 +77,20 @@ public static class SettingsEndpoints
             IEventPublisher      publisher,
             CancellationToken    ct) =>
         {
+            // Path traversal validation.
+            if (!string.IsNullOrWhiteSpace(request.WatchDirectory))
+            {
+                var err = PathValidator.Validate(request.WatchDirectory);
+                if (err is not null)
+                    return Results.BadRequest(new { error = err });
+            }
+            if (!string.IsNullOrWhiteSpace(request.LibraryRoot))
+            {
+                var err = PathValidator.Validate(request.LibraryRoot);
+                if (err is not null)
+                    return Results.BadRequest(new { error = err });
+            }
+
             var manifest = storageManifest.Load();
 
             if (!string.IsNullOrWhiteSpace(request.WatchDirectory))
@@ -106,13 +127,20 @@ public static class SettingsEndpoints
         })
         .WithName("UpdateFolderSettings")
         .WithSummary("Saves Watch Folder + Library Folder paths and hot-swaps the FileSystemWatcher.")
-        .Produces(StatusCodes.Status200OK);
+        .Produces(StatusCodes.Status200OK)
+        .RequireAdmin();
 
         // ── POST /settings/test-path ────────────────────────────────────────────
 
         grp.MapPost("/test-path", (TestPathRequest request) =>
         {
             var path   = request.Path ?? string.Empty;
+
+            // Path traversal validation.
+            var pathError = PathValidator.Validate(path);
+            if (pathError is not null)
+                return Results.BadRequest(new { error = pathError });
+
             var exists = Directory.Exists(path);
             bool hasRead  = false;
             bool hasWrite = false;
@@ -149,7 +177,8 @@ public static class SettingsEndpoints
         })
         .WithName("TestPath")
         .WithSummary("Probes a directory path for existence, read access, and write access.")
-        .Produces<TestPathResponse>(StatusCodes.Status200OK);
+        .Produces<TestPathResponse>(StatusCodes.Status200OK)
+        .RequireAdmin();
 
         // ── PUT /settings/providers/{name} ───────────────────────────────────────
 
@@ -186,7 +215,8 @@ public static class SettingsEndpoints
         .WithName("UpdateProvider")
         .WithSummary("Toggles a provider's enabled state and saves to the manifest.")
         .Produces<ProviderStatusResponse>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status404NotFound);
+        .Produces(StatusCodes.Status404NotFound)
+        .RequireAdmin();
 
         // ── GET /settings/providers ─────────────────────────────────────────────
 
@@ -242,7 +272,63 @@ public static class SettingsEndpoints
         })
         .WithName("GetProviderStatus")
         .WithSummary("Returns enabled/reachability status for all registered metadata providers.")
-        .Produces<ProviderStatusResponse[]>(StatusCodes.Status200OK);
+        .Produces<ProviderStatusResponse[]>(StatusCodes.Status200OK)
+        .RequireAdminOrCurator();
+
+        // ── GET /settings/organization-template ───────────────────────────────────
+
+        grp.MapGet("/organization-template", (
+            IStorageManifest                              storageManifest,
+            Microsoft.Extensions.Options.IOptions<Tanaste.Ingestion.Models.IngestionOptions> ingestionOpts,
+            IFileOrganizer                                organizer) =>
+        {
+            var manifest = storageManifest.Load();
+            string template = !string.IsNullOrWhiteSpace(manifest.OrganizationTemplate)
+                ? manifest.OrganizationTemplate
+                : ingestionOpts.Value.OrganizationTemplate;
+
+            string? preview = organizer.ValidateTemplate(template, out _);
+
+            return Results.Ok(new OrganizationTemplateResponse
+            {
+                Template = template,
+                Preview  = preview,
+            });
+        })
+        .WithName("GetOrganizationTemplate")
+        .WithSummary("Returns the current file organization template and a sample preview.")
+        .Produces<OrganizationTemplateResponse>(StatusCodes.Status200OK)
+        .RequireAdmin();
+
+        // ── PUT /settings/organization-template ───────────────────────────────────
+
+        grp.MapPut("/organization-template", (
+            UpdateOrganizationTemplateRequest request,
+            IStorageManifest                  storageManifest,
+            IFileOrganizer                    organizer) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.Template))
+                return Results.BadRequest(new { error = "Template cannot be empty." });
+
+            string? preview = organizer.ValidateTemplate(request.Template, out var error);
+            if (preview is null)
+                return Results.BadRequest(new { error = error ?? "Invalid template." });
+
+            var manifest = storageManifest.Load();
+            manifest.OrganizationTemplate = request.Template;
+            storageManifest.Save(manifest);
+
+            return Results.Ok(new OrganizationTemplateResponse
+            {
+                Template = request.Template,
+                Preview  = preview,
+            });
+        })
+        .WithName("UpdateOrganizationTemplate")
+        .WithSummary("Validates and saves a new file organization template.")
+        .Produces<OrganizationTemplateResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .RequireAdmin();
 
         return app;
     }

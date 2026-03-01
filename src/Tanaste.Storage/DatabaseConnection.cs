@@ -161,6 +161,17 @@ public sealed class DatabaseConnection : IDatabaseConnection
                 );
                 """);
 
+        // Migration M-006: Phase A Security — add role column to api_keys.
+        // Databases created before Phase A will not have this column; the ALTER
+        // TABLE adds it with DEFAULT 'Administrator' so all existing keys retain
+        // full access.  New keys can be assigned Curator or Consumer roles.
+        MigrateAddColumnIfMissing(
+            conn,
+            table:  "api_keys",
+            column: "role",
+            ddl:    "ALTER TABLE api_keys ADD COLUMN role TEXT NOT NULL DEFAULT 'Administrator' " +
+                    "CHECK (role IN ('Administrator', 'Curator', 'Consumer'));");
+
         // Seed S-001: provider_registry entries for all known providers.
         // metadata_claims.provider_id has a FK to provider_registry(id), so these
         // rows MUST exist before any claim is written.  INSERT OR IGNORE makes this

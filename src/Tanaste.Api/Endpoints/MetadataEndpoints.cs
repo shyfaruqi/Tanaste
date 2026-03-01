@@ -1,5 +1,6 @@
 using Tanaste.Api.Hubs;
 using Tanaste.Api.Models;
+using Tanaste.Api.Security;
 using Tanaste.Domain.Contracts;
 using Tanaste.Domain.Entities;
 using Tanaste.Storage.Contracts;
@@ -29,7 +30,8 @@ public static class MetadataEndpoints
         })
         .WithName("GetClaimHistory")
         .WithSummary("Returns all metadata claims for a Work or Edition, ordered by claimed_at.")
-        .Produces<List<ClaimDto>>(StatusCodes.Status200OK);
+        .Produces<List<ClaimDto>>(StatusCodes.Status200OK)
+        .RequireAnyRole();
 
         // ── PATCH /metadata/lock-claim ───────────────────────────────────────
         group.MapMethods("/lock-claim", ["PATCH"], async (
@@ -101,7 +103,8 @@ public static class MetadataEndpoints
         .WithName("LockClaim")
         .WithSummary("Create a user-locked metadata claim and update the canonical value. Used by the Curator's Drawer.")
         .Produces<LockClaimResponse>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status400BadRequest);
+        .Produces(StatusCodes.Status400BadRequest)
+        .RequireAdminOrCurator();
 
         // ── PATCH /metadata/resolve (legacy) ─────────────────────────────────
         group.MapMethods("/resolve", ["PATCH"], async (
@@ -151,7 +154,8 @@ public static class MetadataEndpoints
         .WithName("ResolveMetadataConflict")
         .WithSummary("Manually override a metadata canonical value, locking in the chosen value.")
         .Produces<ResolveResponse>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status400BadRequest);
+        .Produces(StatusCodes.Status400BadRequest)
+        .RequireAdminOrCurator();
 
         return app;
     }

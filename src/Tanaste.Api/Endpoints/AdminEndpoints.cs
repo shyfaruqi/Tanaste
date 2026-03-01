@@ -1,4 +1,5 @@
 using Tanaste.Api.Models;
+using Tanaste.Api.Security;
 using Tanaste.Api.Services;
 using Tanaste.Domain.Contracts;
 
@@ -8,8 +9,10 @@ namespace Tanaste.Api.Endpoints;
 /// Administration endpoints for API key management and provider configuration.
 /// All routes are grouped under /admin.
 ///
+/// Access: Administrator only (all endpoints).
+///
 /// API key endpoints:
-///   GET    /admin/api-keys           — list all keys (id, label, created_at only)
+///   GET    /admin/api-keys           — list all keys (id, label, role, created_at only)
 ///   POST   /admin/api-keys           — generate a new key (plaintext shown ONCE)
 ///   DELETE /admin/api-keys/{id}      — revoke a single key
 ///   DELETE /admin/api-keys           — revoke ALL keys
@@ -37,7 +40,8 @@ public static class AdminEndpoints
         })
         .WithName("ListApiKeys")
         .WithSummary("List all issued API keys. Key values are never included.")
-        .Produces<List<ApiKeyDto>>(StatusCodes.Status200OK);
+        .Produces<List<ApiKeyDto>>(StatusCodes.Status200OK)
+        .RequireAdmin();
 
         group.MapPost("/api-keys", async (
             CreateApiKeyRequest request,
@@ -47,7 +51,8 @@ public static class AdminEndpoints
             if (string.IsNullOrWhiteSpace(request.Label))
                 return Results.BadRequest("label must not be empty.");
 
-            var (key, plaintext) = await svc.GenerateAsync(request.Label, ct);
+            var role = request.Role ?? "Administrator";
+            var (key, plaintext) = await svc.GenerateAsync(request.Label, role, ct);
 
             // The plaintext is returned exactly once in this response.
             // SECURITY: do not log, cache, or re-send the 'key' field.
@@ -55,6 +60,7 @@ public static class AdminEndpoints
             {
                 Id        = key.Id,
                 Label     = key.Label,
+                Role      = key.Role,
                 Key       = plaintext,
                 CreatedAt = key.CreatedAt,
             });
@@ -62,7 +68,9 @@ public static class AdminEndpoints
         .WithName("CreateApiKey")
         .WithSummary("Generate a new API key. The key value is shown only in this response.")
         .Produces<CreateApiKeyResponse>(StatusCodes.Status200OK)
-        .Produces(StatusCodes.Status400BadRequest);
+        .Produces(StatusCodes.Status400BadRequest)
+        .RequireAdmin()
+        .RequireRateLimiting("key_generation");
 
         group.MapDelete("/api-keys/{id:guid}", async (
             Guid id,
@@ -77,7 +85,8 @@ public static class AdminEndpoints
         .WithName("RevokeApiKey")
         .WithSummary("Revoke an API key. Existing sessions using this key will immediately receive 401.")
         .Produces(StatusCodes.Status204NoContent)
-        .Produces(StatusCodes.Status404NotFound);
+        .Produces(StatusCodes.Status404NotFound)
+        .RequireAdmin();
 
         // Revoke ALL keys — no route parameter distinguishes this from single revoke.
         group.MapDelete("/api-keys", async (
@@ -89,7 +98,8 @@ public static class AdminEndpoints
         })
         .WithName("RevokeAllApiKeys")
         .WithSummary("Revoke ALL issued API keys. Returns the count of revoked keys.")
-        .Produces<RevokeAllKeysResponse>(StatusCodes.Status200OK);
+        .Produces<RevokeAllKeysResponse>(StatusCodes.Status200OK)
+        .RequireAdmin();
 
         // ── Provider Configuration ─────────────────────────────────────────────
 
@@ -104,7 +114,8 @@ public static class AdminEndpoints
         })
         .WithName("ListProviderConfigs")
         .WithSummary("List configuration entries for a provider. Secret values are masked as '********'.")
-        .Produces<List<ProviderConfigDto>>(StatusCodes.Status200OK);
+        .Produces<List<ProviderConfigDto>>(StatusCodes.Status200OK)
+        .RequireAdmin();
 
         group.MapMethods("/provider-configs/{providerId}/{configKey}", ["PUT"], async (
             string providerId,
@@ -129,7 +140,8 @@ public static class AdminEndpoints
         .WithName("UpsertProviderConfig")
         .WithSummary("Set a provider configuration value. Secret values are encrypted before storage.")
         .Produces(StatusCodes.Status204NoContent)
-        .Produces(StatusCodes.Status400BadRequest);
+        .Produces(StatusCodes.Status400BadRequest)
+        .RequireAdmin();
 
         group.MapDelete("/provider-configs/{providerId}/{configKey}", async (
             string providerId,
@@ -142,7 +154,8 @@ public static class AdminEndpoints
         })
         .WithName("DeleteProviderConfig")
         .WithSummary("Remove a provider configuration entry.")
-        .Produces(StatusCodes.Status204NoContent);
+        .Produces(StatusCodes.Status204NoContent)
+        .RequireAdmin();
 
         return app;
     }

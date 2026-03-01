@@ -157,6 +157,8 @@ CREATE TABLE IF NOT EXISTS api_keys (
     id          TEXT NOT NULL PRIMARY KEY,       -- UUID
     label       TEXT NOT NULL,                   -- human-readable, e.g. "Radarr Integration"
     hashed_key  TEXT NOT NULL UNIQUE,            -- SHA-256 hex of the plaintext key
+    role        TEXT NOT NULL DEFAULT 'Administrator'
+                    CHECK (role IN ('Administrator', 'Curator', 'Consumer')),
     created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 

@@ -1,4 +1,5 @@
 using Tanaste.Api.Models;
+using Tanaste.Api.Security;
 using Tanaste.Storage.Contracts;
 
 namespace Tanaste.Api.Endpoints;
@@ -20,7 +21,8 @@ public static class HubEndpoints
         })
         .WithName("GetAllHubs")
         .WithSummary("List all media hubs with their works and canonical metadata values.")
-        .Produces<List<HubDto>>(StatusCodes.Status200OK);
+        .Produces<List<HubDto>>(StatusCodes.Status200OK)
+        .RequireAnyRole();
 
         group.MapGet("/search", async (
             string? q,
@@ -54,7 +56,8 @@ public static class HubEndpoints
         })
         .WithName("SearchHubs")
         .WithSummary("Full-text search across all works. Returns up to 20 matching results.")
-        .Produces<List<SearchResultDto>>(StatusCodes.Status200OK);
+        .Produces<List<SearchResultDto>>(StatusCodes.Status200OK)
+        .RequireAnyRole();
 
         return app;
     }

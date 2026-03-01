@@ -1,6 +1,9 @@
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.SignalR;
 using Tanaste.Api.Endpoints;
 using Tanaste.Api.Hubs;
 using Tanaste.Api.Middleware;
+using Tanaste.Api.Security;
 using Tanaste.Api.Services;
 using Tanaste.Domain.Contracts;
 using Tanaste.Ingestion;
@@ -39,8 +42,47 @@ builder.Services.AddCors(options =>
 });
 
 // ── SignalR ───────────────────────────────────────────────────────────────────
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.AddFilter<IntercomAuthFilter>();
+});
 builder.Services.AddSingleton<IEventPublisher, SignalREventPublisher>();
+
+// ── Rate Limiting ─────────────────────────────────────────────────────────────
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Policy: key_generation — 5 requests per minute per IP (API key creation).
+    options.AddPolicy("key_generation", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window      = TimeSpan.FromMinutes(1),
+            }));
+
+    // Policy: streaming — 100 requests per minute per IP (file streaming).
+    options.AddPolicy("streaming", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 100,
+                Window      = TimeSpan.FromMinutes(1),
+            }));
+
+    // Policy: general — 60 requests per minute per IP (everything else).
+    options.AddPolicy("general", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 60,
+                Window      = TimeSpan.FromMinutes(1),
+            }));
+});
 
 // ── Data Protection / Secret Store ────────────────────────────────────────────
 builder.Services.AddDataProtection();
@@ -121,8 +163,9 @@ builder.Services.PostConfigure<IngestionOptions>(opts =>
     {
         var mp = config["Tanaste:ManifestPath"] ?? "tanaste_master.json";
         var m  = new Tanaste.Storage.ManifestParser(mp).Load();
-        if (!string.IsNullOrWhiteSpace(m.WatchDirectory)) opts.WatchDirectory = m.WatchDirectory;
-        if (!string.IsNullOrWhiteSpace(m.LibraryRoot))    opts.LibraryRoot    = m.LibraryRoot;
+        if (!string.IsNullOrWhiteSpace(m.WatchDirectory))       opts.WatchDirectory       = m.WatchDirectory;
+        if (!string.IsNullOrWhiteSpace(m.LibraryRoot))          opts.LibraryRoot          = m.LibraryRoot;
+        if (!string.IsNullOrWhiteSpace(m.OrganizationTemplate)) opts.OrganizationTemplate = m.OrganizationTemplate;
     }
     catch
     {
@@ -215,6 +258,7 @@ var app = builder.Build();
 // ── Middleware pipeline ───────────────────────────────────────────────────────
 app.UseCors("BlazorWasm");
 app.UseMiddleware<ApiKeyMiddleware>();
+app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
 {

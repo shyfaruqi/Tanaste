@@ -185,12 +185,38 @@ Private API keys (e.g. for external metadata providers like TMDB or MusicBrainz)
 
 **Guest Key System**
 Any application that wants to talk to the Engine must present a valid API key. Keys are:
-- Generated inside the Engine
+- Generated inside the Engine with an assigned role (Administrator, Curator, or Consumer)
 - Labelled (e.g. "Radarr integration", "Mobile app")
 - Revocable individually without affecting other keys
 
+**Mandatory Authentication (Phase A Security Foundation)**
+Every Engine endpoint requires authentication, with two exceptions:
+- `/system/status` — health probe, always open.
+- Localhost requests — when `Tanaste:Security:LocalhostBypass` is `true` (the default), requests from the local machine are treated as Administrator without needing a key. This preserves the local development experience.
+
+All other unauthenticated requests receive 401 Unauthorized.
+
+**Role-Based Authorization**
+Each API key carries one of three roles:
+- **Administrator** — Full access to all endpoints.
+- **Curator** — Can browse the library, stream files, read/write metadata claims, and view provider status. Cannot access admin operations, folder settings, ingestion, or profile management.
+- **Consumer** — Can browse the library, stream files, and read metadata claim history. Cannot modify metadata or access any settings.
+
+**Rate Limiting**
+Three rate-limiting policies protect the Engine:
+- Key generation: 5 requests/minute per IP.
+- File streaming: 100 requests/minute per IP.
+- General API: 60 requests/minute per IP.
+
+**Path Traversal Protection**
+Folder-related endpoints (`/settings/folders`, `/settings/test-path`) reject paths containing `..` traversal segments or targeting known system directories (`C:\Windows`, `/etc`, etc.).
+
+**SignalR Hub Authentication**
+The real-time intercom (`/hubs/intercom`) requires authentication via `X-Api-Key` header, `access_token` query string parameter, or localhost bypass. Unauthenticated connections from non-localhost are rejected.
+
 **Why this matters to the business:**
-- **Privacy:** No third-party app gets free access. Each connection is authorised and audited.
+- **Privacy:** No third-party app gets free access. Each connection is authorised with a specific role, and the Engine can now be safely exposed beyond localhost.
+- **Reliability:** Role-based access prevents external tools from accidentally calling admin operations.
 - **Maintenance:** A compromised key can be revoked in seconds. The rest of the system is unaffected.
 
 ### 3.4 — Dashboard UI Features

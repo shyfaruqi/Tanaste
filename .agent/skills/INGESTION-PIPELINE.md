@@ -1,0 +1,98 @@
+# Skill: Ingestion Pipeline Operations
+
+> Last updated: 2026-03-01
+
+---
+
+## Purpose
+
+This skill covers the full file ingestion lifecycle — from Watch Folder detection through organisation and enrichment.
+
+---
+
+## Key files
+
+| File | Role |
+|------|------|
+| `src/Tanaste.Ingestion/FileWatcher.cs` | OS-level file detection (FileSystemWatcher wrapper) |
+| `src/Tanaste.Ingestion/DebounceQueue.cs` | Event coalescing, settle timer, file-lock probing |
+| `src/Tanaste.Ingestion/IngestionEngine.cs` | 12-step pipeline orchestrator (BackgroundService) |
+| `src/Tanaste.Ingestion/AssetHasher.cs` | SHA-256 streaming fingerprinting |
+| `src/Tanaste.Ingestion/BackgroundWorker.cs` | Bounded-concurrency task queue |
+| `src/Tanaste.Ingestion/FileOrganizer.cs` | Template-based path resolution + collision-safe moves |
+| `src/Tanaste.Ingestion/SidecarWriter.cs` | tanaste.xml read/write (Hub + Edition schemas) |
+| `src/Tanaste.Ingestion/LibraryScanner.cs` | Great Inhale — rebuild DB from sidecar XML |
+| `src/Tanaste.Ingestion/EpubMetadataTagger.cs` | Write-back metadata into EPUB files |
+| `src/Tanaste.Providers/Services/MetadataHarvestingService.cs` | Background external metadata enrichment queue |
+| `src/Tanaste.Providers/Services/RecursiveIdentityService.cs` | Author/narrator person creation + linking |
+| `src/Tanaste.Storage/MediaEntityChainFactory.cs` | Hub→Work→Edition chain creation |
+| `src/Tanaste.Api/Endpoints/IngestionEndpoints.cs` | Dry-run scan + Great Inhale API surface |
+
+---
+
+## Pipeline steps (in order)
+
+```
+1. FileWatcher detects OS event → FileEvent
+2. DebounceQueue coalesces events per path, waits settle delay, probes file lock
+3. IngestionEngine dequeues IngestionCandidate
+4. Skip if IsFailed or file is deleted
+5. AssetHasher computes SHA-256 fingerprint
+6. MediaAssetRepository.FindByHashAsync → duplicate check
+7. ProcessorRegistry.ProcessAsync → extract metadata claims + cover art
+8. Skip if ProcessorResult.IsCorrupt
+9. Convert ExtractedClaims to MetadataClaims → persist
+10. ScoringEngine.ScoreEntityAsync → persist CanonicalValues
+11. MediaEntityChainFactory → create Hub→Work→Edition
+12. MediaAssetRepository.InsertAsync (INSERT OR IGNORE)
+13. If confidence ≥ 0.85 or user-locked: FileOrganizer.ExecuteMoveAsync + SidecarWriter + cover.jpg
+14. If WriteBack enabled: EpubMetadataTagger.WriteTagsAsync
+15. MetadataHarvestingService.EnqueueAsync → background enrichment
+16. RecursiveIdentityService.ProcessAsync → person creation + linking
+```
+
+---
+
+## How to add a new file processor
+
+1. Create a class implementing `IMediaProcessor` in `src/Tanaste.Processors/Processors/`.
+2. Set `SupportedType` to the matching `MediaType` enum value.
+3. Set `Priority` (higher = tried first; existing: EPUB=100, Video=90, Comic=85).
+4. Implement `CanProcess(byte[])` — inspect magic bytes to identify the format.
+5. Implement `ProcessAsync()` — return `ProcessorResult` with `ExtractedClaim[]` and optional cover image.
+6. Register in `Program.cs` DI container.
+7. The `MediaProcessorRegistry` will automatically include it in the dispatch chain.
+
+---
+
+## How to add a new metadata tagger (write-back)
+
+1. Create a class implementing `IMetadataTagger` in `src/Tanaste.Ingestion/`.
+2. Implement `CanHandle(MediaType)` — return true for supported types.
+3. Implement `WriteTagsAsync()` and `WriteCoverArtAsync()`.
+4. Register as `IMetadataTagger` in `Program.cs` DI container.
+5. The IngestionEngine iterates all registered taggers in step 14.
+
+---
+
+## Configuration defaults
+
+| Setting | Default | Source |
+|---------|---------|--------|
+| Settle delay | 2 seconds | DebounceOptions |
+| File-lock probe interval | 500ms (exponential backoff) | DebounceOptions |
+| Max probe attempts | 8 (~127s total window) | DebounceOptions |
+| Queue capacity | 512 (debounce) / 1000 (worker) / 500 (harvest) | Various |
+| Auto-organise threshold | 0.85 (85% confidence) | ScoringConfiguration |
+| Organisation template | `{Category}/{HubName} ({Year})/{Format}/{HubName} ({Edition}){Ext}` | IngestionOptions |
+
+---
+
+## Known gaps
+
+1. **Deleted files are not cleaned up** — `HandleDeletedAsync` only logs. No orphan reconciler.
+2. **FileWatcher error recovery** — non-overflow errors (network disconnect) are swallowed silently.
+3. **Standalone worker host is broken** — missing 6+ Phase 9 DI registrations.
+4. **PersonEnriched event has empty name** — known bug in MetadataHarvestingService.
+5. **Work+Edition proliferation** — new chain created per asset, even for same work under same Hub.
+6. **Great Inhale cannot restore from complete wipe** — requires assets to already exist in DB.
