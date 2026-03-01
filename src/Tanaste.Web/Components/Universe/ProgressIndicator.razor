@@ -6,7 +6,7 @@
 <div class="progress-card">
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-1">
         <MudIcon Icon="@Icon" Size="Size.Small"
-                 Style="color: rgba(255,255,255,0.60); font-size: 20px;" />
+                 Style="color: var(--tanaste-icon-muted); font-size: 20px;" />
         <MudText Typo="Typo.body1" Style="font-weight: 600;">
             @Value
         </MudText>
@@ -16,7 +16,7 @@
                        Size="Size.Small" Class="mb-1"
                        Style="height: 4px;" />
 
-    <MudText Typo="Typo.caption" Style="color: rgba(255,255,255,0.45);">
+    <MudText Typo="Typo.caption" Style="color: var(--tanaste-text-faint);">
         @Label
     </MudText>
 </div>
@@ -37,8 +37,8 @@
 
 <style>
     .progress-card {
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--tanaste-glass-inner-bg);
+        border: 1px solid var(--tanaste-glass-inner-border);
         border-radius: 16px;
         padding: 12px 16px;
         min-width: 140px;

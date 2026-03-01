@@ -15,7 +15,7 @@
                 <div class="hero-artwork-placeholder"
                      style="background: linear-gradient(145deg, @(Hub.DominantHexColor)44, @(Hub.DominantHexColor)11);">
                     <MudIcon Icon="@Icons.Material.Filled.Movie"
-                             Style="font-size: 64px; color: rgba(255,255,255,0.20);" />
+                             Style="font-size: 64px; color: var(--tanaste-icon-soft);" />
                 </div>
             </div>
 
@@ -24,10 +24,10 @@
                 <MudText Typo="Typo.h4" Class="mb-1" Style="font-weight: 600;">
                     @Hub.DisplayName: Last Journey
                 </MudText>
-                <MudText Typo="Typo.body1" Style="color: rgba(255,255,255,0.70);" Class="mb-1">
+                <MudText Typo="Typo.body1" Style="color: var(--tanaste-text-soft);" Class="mb-1">
                     Continue your Journey in @Hub.DisplayName
                 </MudText>
-                <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.45);" Class="mb-4">
+                <MudText Typo="Typo.body2" Style="color: var(--tanaste-text-faint);" Class="mb-4">
                     @Hub.MediaTypes — @Hub.WorkCount @(Hub.WorkCount == 1 ? "work" : "works")
                 </MudText>
 
@@ -95,7 +95,7 @@
         position: relative;
         overflow: hidden;
         border-radius: 32px;
-        background: rgba(255, 255, 255, 0.05);
+        background: var(--tanaste-glass-inner-bg);
         border: 1px solid var(--hero-border, rgba(124, 77, 255, 0.25));
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
@@ -134,7 +134,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--tanaste-glass-border);
     }
 
     .hero-info {

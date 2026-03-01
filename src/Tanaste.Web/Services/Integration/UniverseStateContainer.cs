@@ -23,6 +23,8 @@ public sealed class UniverseStateContainer
     private IngestionProgressEvent?    _ingestionProgress;
     private WatchFolderActiveEvent?    _latestWatchFolderActivation;
     private readonly List<PersonEnrichedEvent> _personUpdates = [];
+    private readonly List<ActivityEntry>       _activityLog   = [];
+    private const int MaxActivityEntries = 100;
 
     // ── Read-only surface ─────────────────────────────────────────────────────
 
@@ -50,6 +52,12 @@ public sealed class UniverseStateContainer
     /// Null until the watch folder has been configured or changed in the current circuit.
     /// </summary>
     public WatchFolderActiveEvent?          LatestWatchFolderActivation => _latestWatchFolderActivation;
+
+    /// <summary>
+    /// Rolling log of plain-English activity entries from SignalR events.
+    /// Most recent entries first. Capped at <see cref="MaxActivityEntries"/>.
+    /// </summary>
+    public IReadOnlyList<ActivityEntry>    ActivityLog                 => _activityLog;
 
     // ── Events ────────────────────────────────────────────────────────────────
 
@@ -103,15 +111,35 @@ public sealed class UniverseStateContainer
     public void PushIngestionProgress(IngestionProgressEvent ev)
     {
         _ingestionProgress = ev;
+
+        // Only log stage transitions (Scanning/Complete), not every tick.
+        if (ev.Stage is "Scanning" or "Complete")
+        {
+            var summary = ev.Stage == "Complete"
+                ? $"Ingestion complete — {ev.ProcessedCount} files processed."
+                : $"Scanning files… ({ev.ProcessedCount} found so far)";
+            PushActivity(new ActivityEntry(
+                DateTimeOffset.UtcNow, ActivityKind.IngestionProgress,
+                "sync", summary));
+        }
+
         OnStateChanged?.Invoke();
     }
 
     /// <summary>
     /// Called when a <c>"MediaAdded"</c> event arrives on the Intercom hub.
-    /// Invalidates the hub cache so the next navigation triggers a fresh load
-    /// with the new Work included.
+    /// Logs the event and invalidates the hub cache so the next navigation
+    /// triggers a fresh load with the new Work included.
     /// </summary>
-    public void PushMediaAdded(MediaAddedEvent ev) => Invalidate();
+    public void PushMediaAdded(MediaAddedEvent ev)
+    {
+        PushActivity(new ActivityEntry(
+            DateTimeOffset.UtcNow, ActivityKind.MediaAdded,
+            "library_add",
+            $"New {ev.MediaType.ToLowerInvariant()} added: \"{ev.Title}\"",
+            $"Assigned to Hub {ev.HubId:N}"));
+        Invalidate();
+    }
 
     /// <summary>
     /// Called when a <c>"PersonEnriched"</c> event arrives on the Intercom hub.
@@ -120,10 +148,31 @@ public sealed class UniverseStateContainer
     public void PushPersonEnriched(PersonEnrichedEvent ev)
     {
         _personUpdates.Add(ev);
-        // Keep only the 50 most recent person updates to avoid unbounded growth.
         if (_personUpdates.Count > 50)
             _personUpdates.RemoveAt(0);
+
+        PushActivity(new ActivityEntry(
+            DateTimeOffset.UtcNow, ActivityKind.PersonEnriched,
+            "person",
+            $"Enriched person: {ev.Name}",
+            ev.HeadshotUrl is not null ? "Portrait found on Wikimedia Commons" : null));
+
         OnStateChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Called when a <c>"MetadataHarvested"</c> event arrives on the Intercom hub.
+    /// Logs the event and invalidates the cache.
+    /// </summary>
+    public void PushMetadataHarvested(MetadataHarvestedEvent ev)
+    {
+        var fields = string.Join(", ", ev.UpdatedFields);
+        PushActivity(new ActivityEntry(
+            DateTimeOffset.UtcNow, ActivityKind.MetadataUpdated,
+            "auto_awesome",
+            $"Metadata updated by {ev.ProviderName}",
+            $"Fields enriched: {fields}"));
+        Invalidate();
     }
 
     /// <summary>
@@ -134,6 +183,32 @@ public sealed class UniverseStateContainer
     public void PushWatchFolderActive(WatchFolderActiveEvent ev)
     {
         _latestWatchFolderActivation = ev;
+
+        PushActivity(new ActivityEntry(
+            DateTimeOffset.UtcNow, ActivityKind.WatchFolderChanged,
+            "folder_open",
+            $"Watch folder updated: {ev.WatchDirectory}"));
+
+        OnStateChanged?.Invoke();
+    }
+
+    // ── Activity log helpers ────────────────────────────────────────────────
+
+    /// <summary>Inserts an entry at position 0 (most recent first) and trims overflow.</summary>
+    private void PushActivity(ActivityEntry entry)
+    {
+        _activityLog.Insert(0, entry);
+        if (_activityLog.Count > MaxActivityEntries)
+            _activityLog.RemoveAt(_activityLog.Count - 1);
+    }
+
+    /// <summary>Adds a startup entry — called once by the orchestrator on connection.</summary>
+    public void PushServerStarted()
+    {
+        PushActivity(new ActivityEntry(
+            DateTimeOffset.UtcNow, ActivityKind.ServerStatus,
+            "power_settings_new",
+            "Dashboard connected to the Engine."));
         OnStateChanged?.Invoke();
     }
 }

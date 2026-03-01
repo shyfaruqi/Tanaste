@@ -29,7 +29,7 @@
                     </MudText>
 
                     @* ── Work count ── *@
-                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.50);">
+                    <MudText Typo="Typo.body2" Style="color: var(--tanaste-text-muted);">
                         @hub.WorkCount @(hub.WorkCount == 1 ? "work" : "works")
                     </MudText>
 
@@ -39,7 +39,7 @@
                         @foreach (var icon in GetDistinctMediaIcons(hub))
                         {
                             <MudIcon Icon="@icon" Size="Size.Small"
-                                     Style="color: rgba(255,255,255,0.35); font-size: 22px;" />
+                                     Style="color: var(--tanaste-icon-muted); font-size: 22px;" />
                         }
                     </MudStack>
 
@@ -52,11 +52,11 @@ else if (VisibleHubs is { Count: 0 } && Hubs is { Count: > 0 })
 {
     @* Filter active (e.g. Automotive Mode) but no matching hubs *@
     <MudPaper Class="pa-8 d-flex flex-column align-center" Elevation="0"
-              Style="background: rgba(255,255,255,0.03); border-radius: 32px; border: 1px solid rgba(255,255,255,0.06);">
+              Style="background: var(--tanaste-glass-inner-bg); border-radius: 32px; border: 1px solid var(--tanaste-glass-inner-border);">
         <MudIcon Icon="@Icons.Material.Filled.FilterAlt"
                  Size="Size.Large" Color="Color.Secondary" Class="mb-3" />
         <MudText Typo="Typo.h6" Class="mb-2">No matching Hubs</MudText>
-        <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.50);">
+        <MudText Typo="Typo.body2" Style="color: var(--tanaste-text-muted);">
             Try a different intent filter from the dock below.
         </MudText>
     </MudPaper>
@@ -64,11 +64,11 @@ else if (VisibleHubs is { Count: 0 } && Hubs is { Count: > 0 })
 else
 {
     <MudPaper Class="pa-8 d-flex flex-column align-center" Elevation="0"
-              Style="background: rgba(255,255,255,0.03); border-radius: 32px; border: 1px solid rgba(255,255,255,0.06);">
+              Style="background: var(--tanaste-glass-inner-bg); border-radius: 32px; border: 1px solid var(--tanaste-glass-inner-border);">
         <MudIcon Icon="@Icons.Material.Filled.LibraryAdd"
                  Size="Size.Large" Color="Color.Secondary" Class="mb-3" />
         <MudText Typo="Typo.h6" Class="mb-2">Your library is empty</MudText>
-        <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.50);">
+        <MudText Typo="Typo.body2" Style="color: var(--tanaste-text-muted);">
             Configure a watch directory and drop files in to get started.
         </MudText>
     </MudPaper>

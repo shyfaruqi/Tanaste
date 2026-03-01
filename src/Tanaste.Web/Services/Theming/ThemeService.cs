@@ -95,10 +95,29 @@ public sealed class ThemeService
 
         PaletteLight = new PaletteLight
         {
-            Primary    = DarkenHex(primaryHex, 0.80),
-            Secondary  = "#00897B",
-            Background = "#F4F4F8",
-            Surface    = "#FFFFFF",
+            Primary             = DarkenHex(primaryHex, 0.80),
+            PrimaryDarken       = DarkenHex(primaryHex, 0.55),
+            PrimaryLighten      = LightenHex(primaryHex, 32),
+            Secondary           = "#00897B",
+            SecondaryDarken     = "#00695C",
+            Background          = "#F4F4F8",
+            BackgroundGray      = "#E8E8EE",
+            Surface             = "#FFFFFF",
+            AppbarBackground    = "#FFFFFF",
+            DrawerBackground    = "#FFFFFF",
+            DrawerText          = "rgba(0,0,0,0.75)",
+            DrawerIcon          = "rgba(0,0,0,0.55)",
+            TextPrimary         = "rgba(0,0,0,0.87)",
+            TextSecondary       = "rgba(0,0,0,0.60)",
+            TextDisabled        = "rgba(0,0,0,0.38)",
+            ActionDefault       = "rgba(0,0,0,0.54)",
+            LinesDefault        = "rgba(0,0,0,0.12)",
+            Divider             = "rgba(0,0,0,0.12)",
+            OverlayDark         = "rgba(0,0,0,0.4)",
+            Error               = "#D32F2F",
+            Warning             = "#EF6C00",
+            Info                = "#0277BD",
+            Success             = "#2E7D32",
         },
 
         Typography = new Typography

@@ -160,6 +160,18 @@ public sealed class UIOrchestratorService : IAsyncDisposable
     /// <summary>Most recent error detail from the last failed API call.</summary>
     public string? LastApiError => _api.LastError;
 
+    // ── Activity Log ────────────────────────────────────────────────────────
+
+    /// <summary>Returns the current activity log (most recent first).</summary>
+    public IReadOnlyList<ActivityEntry> GetActivityLog() => _state.ActivityLog;
+
+    /// <summary>Fires when the activity log changes. Components should use InvokeAsync(StateHasChanged).</summary>
+    public event Action? OnActivityChanged
+    {
+        add    => _state.OnStateChanged += value;
+        remove => _state.OnStateChanged -= value;
+    }
+
     // ── SignalR Intercom ───────────────────────────────────────────────────────
 
     /// <summary>
@@ -227,7 +239,7 @@ public sealed class UIOrchestratorService : IAsyncDisposable
             _logger.LogDebug(
                 "Intercom ← MetadataHarvested: EntityId={Id} Provider={Provider} Fields=[{Fields}]",
                 ev.EntityId, ev.ProviderName, string.Join(",", ev.UpdatedFields));
-            _state.Invalidate();
+            _state.PushMetadataHarvested(ev);
         });
 
         // ── "PersonEnriched" ──────────────────────────────────────────────────
@@ -272,6 +284,7 @@ public sealed class UIOrchestratorService : IAsyncDisposable
         {
             await _hubConnection.StartAsync(ct);
             _logger.LogInformation("Intercom connected → {Url}", hubUrl);
+            _state.PushServerStarted();
         }
         catch (Exception ex)
         {

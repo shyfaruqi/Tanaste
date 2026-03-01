@@ -17,7 +17,7 @@
                 <MudText Typo="Typo.caption"
                          Style="@(ActiveTab == tab.Value
                              ? "color: var(--mud-palette-primary);"
-                             : "color: rgba(255,255,255,0.50);")">
+                             : "color: var(--tanaste-text-muted);")">
                     @tab.Label
                 </MudText>
             </div>
@@ -39,22 +39,24 @@
     // Tab definitions — icon + label + enum value.
     private static readonly TabDef[] _tabs =
     [
-        new(SettingsTab.General,   Icons.Material.Outlined.Settings,   "General"),
-        new(SettingsTab.Folders,   Icons.Material.Outlined.FolderOpen, "Folders"),
-        new(SettingsTab.Providers, Icons.Material.Outlined.Cloud,      "Providers"),
-        new(SettingsTab.Security,  Icons.Material.Outlined.Shield,     "Security"),
+        new(SettingsTab.General,       Icons.Material.Outlined.Settings,      "General"),
+        new(SettingsTab.Folders,       Icons.Material.Outlined.FolderOpen,    "Folders"),
+        new(SettingsTab.Providers,     Icons.Material.Outlined.Cloud,         "Providers"),
+        new(SettingsTab.Security,      Icons.Material.Outlined.Shield,        "Security"),
+        new(SettingsTab.Activity,      Icons.Material.Outlined.Timeline,      "Activity"),
+        new(SettingsTab.Notifications, Icons.Material.Outlined.Notifications, "Alerts"),
     ];
 
     private sealed record TabDef(SettingsTab Value, string Icon, string Label);
 
     /// <summary>Settings page tab identifiers.</summary>
-    public enum SettingsTab { General, Folders, Providers, Security }
+    public enum SettingsTab { General, Folders, Providers, Security, Activity, Notifications }
 }
 
 <style>
     .settings-tab-bar {
-        background: rgba(22, 22, 36, 0.55);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--tanaste-glass-bg);
+        border: 1px solid var(--tanaste-glass-border);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
         border-radius: 24px;
@@ -74,10 +76,10 @@
     }
 
     .settings-tab-item:hover {
-        background: rgba(255, 255, 255, 0.05);
+        background: var(--tanaste-hover-overlay);
     }
 
     .settings-tab-item.active {
-        background: rgba(124, 77, 255, 0.18);
+        background: var(--tanaste-active-overlay);
     }
 </style>

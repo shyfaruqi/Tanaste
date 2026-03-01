@@ -50,7 +50,7 @@
         @* Active intent label *@
         <div class="intent-dock-label">
             <MudText Typo="Typo.caption"
-                     Style="color: rgba(255,255,255,0.50); text-align: center; padding-bottom: 6px;">
+                     Style="color: var(--tanaste-text-muted); text-align: center; padding-bottom: 6px;">
                 @ActiveIntent.ToString()
             </MudText>
         </div>
@@ -72,7 +72,7 @@
 
     private string DockButtonStyle(DockIntent intent) =>
         ActiveIntent == intent
-            ? "background: rgba(124, 77, 255, 0.18); border-radius: 16px;"
+            ? "background: var(--tanaste-active-overlay); border-radius: 16px;"
             : "border-radius: 16px;";
 
     public enum DockIntent { Hubs, Watch, Read, Listen }
@@ -92,14 +92,12 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        background: rgba(255, 255, 255, 0.05) !important;
+        background: var(--tanaste-glass-bg) !important;
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        border: 1px solid var(--tanaste-glass-border);
         border-radius: 28px !important;
-        box-shadow:
-            0 8px 32px rgba(0, 0, 0, 0.50),
-            0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+        box-shadow: var(--tanaste-shadow);
     }
 
     .intent-dock-label {
