@@ -61,10 +61,11 @@ public sealed class ManifestParser : IStorageManifest
             return manifest!;
         }
 
-        throw new InvalidOperationException(
-            $"Cannot load '{_manifestPath}' or '{_backupPath}'. " +
-            "Both files are missing or contain invalid JSON. " +
-            "The system cannot bootstrap without a valid manifest.");
+        // Attempt 3 – first-run bootstrap: create a default manifest with all
+        // standard providers and persist it so subsequent loads succeed.
+        manifest = CreateDefaultManifest();
+        Save(manifest);
+        return manifest;
     }
 
     /// <inheritdoc/>
@@ -83,6 +84,79 @@ public sealed class ManifestParser : IStorageManifest
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Creates a default manifest with all standard providers, scoring defaults,
+    /// and external API endpoint URLs. Used on first run when no manifest exists.
+    /// </summary>
+    private static TanasteMasterManifest CreateDefaultManifest() => new()
+    {
+        SchemaVersion = "1.0",
+        DatabasePath  = "tanaste.db",
+        DataRoot      = "./media",
+        Providers =
+        [
+            new ProviderBootstrap
+            {
+                Name    = "local_filesystem",
+                Enabled = true,
+                Weight  = 1.0,
+                Domain  = ProviderDomain.Universal,
+            },
+            new ProviderBootstrap
+            {
+                Name           = "apple_books_ebook",
+                Enabled        = true,
+                Weight         = 0.7,
+                Domain         = ProviderDomain.Ebook,
+                CapabilityTags = ["cover", "description", "rating"],
+                FieldWeights   = new() { ["cover"] = 0.9, ["description"] = 0.9, ["rating"] = 0.8 },
+            },
+            new ProviderBootstrap
+            {
+                Name           = "open_library",
+                Enabled        = false,
+                Weight         = 0.7,
+                Domain         = ProviderDomain.Ebook,
+                CapabilityTags = ["series"],
+                FieldWeights   = new() { ["series"] = 0.9 },
+            },
+            new ProviderBootstrap
+            {
+                Name           = "audnexus",
+                Enabled        = true,
+                Weight         = 0.7,
+                Domain         = ProviderDomain.Audiobook,
+                CapabilityTags = ["cover", "narrator", "series"],
+                FieldWeights   = new() { ["cover"] = 0.9, ["narrator"] = 0.9, ["series"] = 0.9 },
+            },
+            new ProviderBootstrap
+            {
+                Name           = "apple_books_audiobook",
+                Enabled        = true,
+                Weight         = 0.7,
+                Domain         = ProviderDomain.Audiobook,
+                CapabilityTags = ["cover"],
+                FieldWeights   = new() { ["cover"] = 0.6 },
+            },
+            new ProviderBootstrap
+            {
+                Name           = "wikidata",
+                Enabled        = true,
+                Weight         = 0.7,
+                Domain         = ProviderDomain.Universal,
+                CapabilityTags = ["series", "franchise", "person_id"],
+                FieldWeights   = new() { ["series"] = 1.0, ["franchise"] = 1.0, ["person_id"] = 1.0 },
+            },
+        ],
+        ProviderEndpoints = new()
+        {
+            ["apple_books"]    = "https://itunes.apple.com",
+            ["audnexus"]       = "https://api.audnexus.com",
+            ["wikidata_api"]   = "https://www.wikidata.org/w/api.php",
+            ["wikidata_sparql"] = "https://query.wikidata.org/sparql",
+        },
+    };
 
     private static bool TryDeserialize(string path, out TanasteMasterManifest? manifest)
     {
