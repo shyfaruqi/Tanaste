@@ -274,11 +274,15 @@ public sealed class IngestionEngine : BackgroundService, IIngestionEngine
             candidate.Path, hash.Hex, hash.FileSize, hash.Elapsed), ct).ConfigureAwait(false);
 
         // Step 5: duplicate check.
+        // If the file is already ingested but still sitting in the Watch Folder
+        // (e.g. it scored below the confidence gate on first pass, or LibraryRoot
+        // was not configured at that time), attempt to organize it now — metadata
+        // may have been enriched by external providers since the initial scan.
         var existing = await _assetRepo.FindByHashAsync(hash.Hex, ct).ConfigureAwait(false);
         if (existing is not null)
         {
-            _logger.LogDebug("Duplicate detected (hash={Hash}); skipping {Path}",
-                hash.Hex[..12], candidate.Path);
+            await TryReorganizeExistingAsync(existing, candidate.Path, ct)
+                .ConfigureAwait(false);
             return;
         }
 
@@ -650,6 +654,100 @@ public sealed class IngestionEngine : BackgroundService, IIngestionEngine
             _logger.LogInformation(
                 "Initial scan: enqueued {Count} existing file(s) from {Dir}",
                 count, directory);
+    }
+
+    // =========================================================================
+    // Re-organize already-ingested files still sitting in the Watch Folder
+    // =========================================================================
+
+    /// <summary>
+    /// When a file's content hash is already in the database but the file is
+    /// still sitting in the Watch Folder (not auto-organized on first ingest),
+    /// attempt to organize it using the canonical values that may have been
+    /// enriched by external providers since the initial scan.
+    /// </summary>
+    private async Task TryReorganizeExistingAsync(
+        MediaAsset existing, string currentPath, CancellationToken ct)
+    {
+        // Only attempt if the file is currently in the Watch Folder.
+        if (string.IsNullOrWhiteSpace(_options.WatchDirectory)
+            || !currentPath.StartsWith(
+                    _options.WatchDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogDebug(
+                "Duplicate (hash={Hash}) not in Watch Folder; skipping: {Path}",
+                existing.ContentHash[..12], currentPath);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_options.LibraryRoot))
+        {
+            _logger.LogInformation(
+                "Cannot re-organize {Hash}: LibraryRoot is not configured. " +
+                "Set a Library Folder in Server Settings.",
+                existing.ContentHash[..12]);
+            return;
+        }
+
+        // Load existing canonical values — these contain the resolved metadata
+        // (possibly enriched by external providers since the initial scan).
+        var canonicals = await _canonicalRepo.GetByEntityAsync(existing.Id, ct)
+                                             .ConfigureAwait(false);
+        if (canonicals.Count == 0)
+        {
+            _logger.LogInformation(
+                "Cannot re-organize {Hash}: no canonical values found for asset {Id}.",
+                existing.ContentHash[..12], existing.Id);
+            return;
+        }
+
+        var metadata = canonicals.ToDictionary(
+            c => c.Key, c => c.Value, StringComparer.OrdinalIgnoreCase);
+
+        // Determine media type from canonical values or fall back to Unknown.
+        var mediaType = metadata.TryGetValue("media_type", out var mtStr)
+            && Enum.TryParse<MediaType>(mtStr, ignoreCase: true, out var mt)
+                ? mt
+                : (MediaType?)null;
+
+        // Build a synthetic candidate so the FileOrganizer can calculate the path.
+        var synth = new IngestionCandidate
+        {
+            Path       = currentPath,
+            EventType  = FileEventType.Created,
+            DetectedAt = DateTimeOffset.UtcNow,
+            ReadyAt    = DateTimeOffset.UtcNow,
+            Metadata          = metadata,
+            DetectedMediaType = mediaType,
+        };
+
+        var relative = _organizer.CalculatePath(synth, _options.OrganizationTemplate);
+        var destPath = Path.Combine(
+            _options.LibraryRoot, relative, Path.GetFileName(currentPath));
+
+        bool moved = await _organizer.ExecuteMoveAsync(currentPath, destPath, ct)
+                                      .ConfigureAwait(false);
+
+        if (moved)
+        {
+            await _assetRepo.UpdateFilePathAsync(existing.Id, destPath, ct)
+                            .ConfigureAwait(false);
+
+            _logger.LogInformation(
+                "Re-organized existing asset {Hash} → {Dest}",
+                existing.ContentHash[..12], destPath);
+
+            await SafePublishAsync("IngestionCompleted", new IngestionCompletedEvent(
+                destPath,
+                mediaType?.ToString() ?? "Unknown",
+                DateTimeOffset.UtcNow), ct).ConfigureAwait(false);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Re-organize move failed for {Hash} ({Source} → {Dest})",
+                existing.ContentHash[..12], currentPath, destPath);
+        }
     }
 
     // =========================================================================

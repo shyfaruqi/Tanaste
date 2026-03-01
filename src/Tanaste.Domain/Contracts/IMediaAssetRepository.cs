@@ -57,4 +57,11 @@ public interface IMediaAssetRepository
     /// Normal → Conflicted / Normal → Orphaned lifecycle states.
     /// </summary>
     Task UpdateStatusAsync(Guid id, AssetStatus status, CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates the <c>file_path_root</c> column for the asset identified by <paramref name="id"/>.
+    /// Called after a file is re-organized (moved from the Watch Folder to the Library)
+    /// so subsequent lookups reflect the new location.
+    /// </summary>
+    Task UpdateFilePathAsync(Guid id, string newPath, CancellationToken ct = default);
 }

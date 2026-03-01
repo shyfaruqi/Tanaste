@@ -157,6 +157,26 @@ public sealed class MediaAssetRepository : IMediaAssetRepository
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc/>
+    public Task UpdateFilePathAsync(Guid id, string newPath, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(newPath);
+
+        var conn = _db.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            UPDATE media_assets
+            SET    file_path_root = @path
+            WHERE  id             = @id;
+            """;
+        cmd.Parameters.AddWithValue("@path", newPath);
+        cmd.Parameters.AddWithValue("@id",   id.ToString());
+        cmd.ExecuteNonQuery();
+
+        return Task.CompletedTask;
+    }
+
     // -------------------------------------------------------------------------
     // Private row mapper
     // -------------------------------------------------------------------------
